@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Subir Factura - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        .upload-container {
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .preview-container {
+            margin-top: 2rem;
+            display: none;
+        }
+
+        .preview-container.active {
+            display: block;
+        }
+
+        .image-preview {
+            width: 100%;
+            max-height: 400px;
+            object-fit: contain;
+            border-radius: var(--border-radius);
+            border: 1px solid var(--border-color);
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 1rem;
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius);
+            margin-top: 1rem;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 8px;
+            background-color: var(--bg-tertiary);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 1rem;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(90deg, var(--primary-color), var(--primary-light));
+            border-radius: 9999px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .analysis-result {
+            margin-top: 2rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: var(--border-radius);
+            display: none;
+        }
+
+        .analysis-result.active {
+            display: block;
+        }
+
+        .result-header {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-icon {
+            width: 60px;
+            height: 60px;
+            background-color: rgba(255, 255, 255, 0.2);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+        }
+
+        .result-title {
+            flex: 1;
+        }
+
+        .result-title h3 {
+            font-size: 1.75rem;
+            margin-bottom: 0.25rem;
+        }
+
+        .result-title p {
+            opacity: 0.9;
+            margin-bottom: 0;
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .result-stat {
+            background-color: rgba(255, 255, 255, 0.1);
+            padding: 1rem;
+            border-radius: var(--border-radius);
+            text-align: center;
+        }
+
+        .result-stat-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .result-stat-label {
+            font-size: 0.875rem;
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar (reuse from dashboard) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard.html" class="sidebar-logo">
+                    🧾 Receipt Lens
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/upload.html" class="nav-item active">
+                    <span class="icon">📤</span>
+                    <span>Subir Factura</span>
+                </a>
+                <a href="/receipts.html" class="nav-item">
+                    <span class="icon">🧾</span>
+                    <span>Mis Facturas</span>
+                </a>
+                <a href="/analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span>Analytics</span>
+                </a>
+                <a href="/profile.html" class="nav-item">
+                    <span class="icon">👤</span>
+                    <span>Perfil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Cargando...</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Subir Factura</h1>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div class="upload-container">
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Analiza tu factura con IA</h3>
+                            <p class="card-subtitle">Sube una foto de tu ticket y Claude AI extraerá automáticamente todos los datos</p>
+                        </div>
+                        <div class="card-body">
+                            <!-- Dropzone -->
+                            <div class="dropzone" id="dropzone">
+                                <div class="dropzone-icon">📤</div>
+                                <div class="dropzone-text">
+                                    <p style="font-size: 1rem; margin-bottom: 0.5rem;"><strong>Arrastra tu factura aquí</strong></p>
+                                    <p style="margin-bottom: 0.5rem;">o</p>
+                                    <button type="button" class="btn btn-primary" onclick="document.getElementById('file-input').click()">
+                                        Seleccionar Archivo
+                                    </button>
+                                    <p style="margin-top: 1rem; font-size: 0.75rem;">Formatos soportados: JPG, PNG, PDF (máx. 10MB)</p>
+                                </div>
+                            </div>
+
+                            <input type="file" id="file-input" accept="image/jpeg,image/png,application/pdf" style="display: none;">
+
+                            <!-- Preview Container -->
+                            <div class="preview-container" id="preview-container">
+                                <h4>Vista Previa</h4>
+                                <img id="image-preview" class="image-preview" alt="Preview">
+                                <div class="file-info">
+                                    <div>
+                                        <strong id="file-name">archivo.jpg</strong>
+                                        <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;" id="file-size">0 KB</p>
+                                    </div>
+                                    <button class="btn btn-danger btn-sm" onclick="clearFile()">
+                                        ✕ Eliminar
+                                    </button>
+                                </div>
+
+                                <div class="progress-bar" id="progress-bar" style="display: none;">
+                                    <div class="progress-fill" id="progress-fill"></div>
+                                </div>
+
+                                <button class="btn btn-primary btn-lg btn-block mt-4" id="upload-btn" onclick="uploadFile()">
+                                    🚀 Analizar Factura
+                                </button>
+                            </div>
+
+                            <!-- Analysis Result -->
+                            <div class="analysis-result" id="analysis-result">
+                                <div class="result-header">
+                                    <div class="result-icon">✅</div>
+                                    <div class="result-title">
+                                        <h3>Análisis Completado</h3>
+                                        <p>Tu factura ha sido procesada exitosamente</p>
+                                    </div>
+                                </div>
+
+                                <div class="result-stats" id="result-stats">
+                                    <div class="result-stat">
+                                        <div class="result-stat-value">--</div>
+                                        <div class="result-stat-label">Total</div>
+                                    </div>
+                                    <div class="result-stat">
+                                        <div class="result-stat-value">--</div>
+                                        <div class="result-stat-label">Items</div>
+                                    </div>
+                                    <div class="result-stat">
+                                        <div class="result-stat-value">--</div>
+                                        <div class="result-stat-label">Tienda</div>
+                                    </div>
+                                </div>
+
+                                <div style="display: flex; gap: 1rem;">
+                                    <a href="/receipts.html" class="btn btn-lg" style="flex: 1; background: white; color: var(--primary-color);">
+                                        Ver Todas las Facturas
+                                    </a>
+                                    <button class="btn btn-lg" style="flex: 1; background: rgba(255,255,255,0.2); color: white;" onclick="uploadAnother()">
+                                        Subir Otra
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tips Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h4 class="card-title">💡 Consejos para mejores resultados</h4>
+                        </div>
+                        <div class="card-body">
+                            <ul style="list-style: none; padding: 0;">
+                                <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                    <span>✓</span>
+                                    <span>Asegúrate de que el texto sea legible y la imagen esté bien iluminada</span>
+                                </li>
+                                <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                    <span>✓</span>
+                                    <span>Evita sombras y reflejos en la factura</span>
+                                </li>
+                                <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                    <span>✓</span>
+                                    <span>La factura debe estar completa y sin cortes</span>
+                                </li>
+                                <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                    <span>✓</span>
+                                    <span>Formatos soportados: JPG, PNG, PDF (máx. 10MB)</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        // Check authentication
+        requireAuth();
+
+        let selectedFile = null;
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const user = window.api.getCachedUser();
+                if (user) {
+                    updateUserDisplay(user);
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        function updateUserDisplay(user) {
+            const avatar = user.username.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').textContent = avatar;
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('user-email').textContent = user.email;
+        }
+
+        // Drag and drop handlers
+        const dropzone = document.getElementById('dropzone');
+
+        dropzone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropzone.classList.add('drag-over');
+        });
+
+        dropzone.addEventListener('dragleave', () => {
+            dropzone.classList.remove('drag-over');
+        });
+
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('drag-over');
+
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                handleFileSelect(files[0]);
+            }
+        });
+
+        // File input handler
+        document.getElementById('file-input').addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                handleFileSelect(e.target.files[0]);
+            }
+        });
+
+        function handleFileSelect(file) {
+            // Validate file type
+            const allowedTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+            if (!allowedTypes.includes(file.type)) {
+                showToast('Tipo de archivo no soportado. Usa JPG, PNG o PDF', 'error');
+                return;
+            }
+
+            // Validate file size (10MB)
+            const maxSize = 10 * 1024 * 1024;
+            if (file.size > maxSize) {
+                showToast('El archivo es demasiado grande. Máximo 10MB', 'error');
+                return;
+            }
+
+            selectedFile = file;
+
+            // Show preview
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                if (file.type === 'application/pdf') {
+                    document.getElementById('image-preview').style.display = 'none';
+                } else {
+                    document.getElementById('image-preview').src = e.target.result;
+                    document.getElementById('image-preview').style.display = 'block';
+                }
+
+                document.getElementById('file-name').textContent = file.name;
+                document.getElementById('file-size').textContent = formatFileSize(file.size);
+                document.getElementById('preview-container').classList.add('active');
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function clearFile() {
+            selectedFile = null;
+            document.getElementById('preview-container').classList.remove('active');
+            document.getElementById('file-input').value = '';
+            document.getElementById('analysis-result').classList.remove('active');
+        }
+
+        async function uploadFile() {
+            if (!selectedFile) {
+                showToast('Por favor selecciona un archivo', 'error');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('upload-btn');
+            const progressBar = document.getElementById('progress-bar');
+            const progressFill = document.getElementById('progress-fill');
+
+            // Disable button and show progress
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<div class="spinner spinner-sm"></div> Analizando con Claude AI...';
+            progressBar.style.display = 'block';
+
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 15;
+                if (progress > 90) progress = 90;
+                progressFill.style.width = `${progress}%`;
+            }, 200);
+
+            try {
+                const response = await window.api.uploadReceipt(selectedFile);
+
+                // Complete progress
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                if (response.success) {
+                    showToast('Factura analizada exitosamente', 'success');
+
+                    // Show result
+                    const receipt = response.data.receipt;
+                    document.getElementById('result-stats').innerHTML = `
+                        <div class="result-stat">
+                            <div class="result-stat-value">${formatCurrency(receipt.total_amount)}</div>
+                            <div class="result-stat-label">Total</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${receipt.items_count || 0}</div>
+                            <div class="result-stat-label">Items</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${receipt.store_name}</div>
+                            <div class="result-stat-label">Tienda</div>
+                        </div>
+                    `;
+
+                    document.getElementById('analysis-result').classList.add('active');
+
+                    // Hide upload UI
+                    setTimeout(() => {
+                        progressBar.style.display = 'none';
+                        uploadBtn.style.display = 'none';
+                    }, 1000);
+                } else {
+                    throw new Error(response.error || 'Error al subir la factura');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressBar.style.display = 'none';
+                showToast(error.message || 'Error al analizar la factura', 'error');
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '🚀 Analizar Factura';
+            }
+        }
+
+        function uploadAnother() {
+            document.getElementById('analysis-result').classList.remove('active');
+            document.getElementById('upload-btn').style.display = 'block';
+            clearFile();
+        }
+
+        function handleLogout() {
+            if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
+                window.api.logout();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Initialize
+        loadUserInfo();
+    </script>
+</body>
+</html>

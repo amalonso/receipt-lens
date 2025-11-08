@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mis Facturas - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard.html" class="sidebar-logo">
+                    🧾 Receipt Lens
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/upload.html" class="nav-item">
+                    <span class="icon">📤</span>
+                    <span>Subir Factura</span>
+                </a>
+                <a href="/receipts.html" class="nav-item active">
+                    <span class="icon">🧾</span>
+                    <span>Mis Facturas</span>
+                </a>
+                <a href="/analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span>Analytics</span>
+                </a>
+                <a href="/profile.html" class="nav-item">
+                    <span class="icon">👤</span>
+                    <span>Perfil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Cargando...</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Mis Facturas</h1>
+                </div>
+                <div class="topbar-actions">
+                    <a href="/upload.html" class="btn btn-primary">
+                        📤 Subir Factura
+                    </a>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Filters -->
+                <div class="card mb-4">
+                    <div class="card-body">
+                        <div class="flex items-center gap-4">
+                            <div class="form-group" style="flex: 1; margin-bottom: 0;">
+                                <input
+                                    type="text"
+                                    id="search-input"
+                                    class="form-control"
+                                    placeholder="Buscar por tienda..."
+                                >
+                            </div>
+                            <div class="form-group" style="margin-bottom: 0;">
+                                <select id="sort-select" class="form-control">
+                                    <option value="date-desc">Más recientes</option>
+                                    <option value="date-asc">Más antiguos</option>
+                                    <option value="amount-desc">Mayor monto</option>
+                                    <option value="amount-asc">Menor monto</option>
+                                </select>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Receipts List -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Todas las Facturas</h3>
+                        <span class="badge badge-primary" id="total-count">0</span>
+                    </div>
+                    <div class="card-body" style="padding: 0;">
+                        <div class="receipt-list" id="receipts-list">
+                            <div class="flex items-center justify-center" style="padding: 3rem;">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Pagination -->
+                <div class="pagination" id="pagination" style="display: none;">
+                    <button id="prev-btn" onclick="loadPage(currentPage - 1)" disabled>← Anterior</button>
+                    <span class="page-info" id="page-info">Página 1 de 1</span>
+                    <button id="next-btn" onclick="loadPage(currentPage + 1)" disabled>Siguiente →</button>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Delete Modal -->
+    <div class="modal" id="delete-modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Confirmar Eliminación</h3>
+                <button class="modal-close">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>¿Estás seguro que deseas eliminar esta factura? Esta acción no se puede deshacer.</p>
+                <div style="margin-top: 1rem; padding: 1rem; background: var(--bg-secondary); border-radius: var(--border-radius);">
+                    <strong id="delete-store-name">Tienda</strong><br>
+                    <span id="delete-amount" style="color: var(--text-secondary);"></span>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeDeleteModal()">Cancelar</button>
+                <button class="btn btn-danger" id="confirm-delete-btn" onclick="confirmDelete()">
+                    Eliminar
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        requireAuth();
+
+        let currentPage = 1;
+        let totalPages = 1;
+        let receipts = [];
+        let deleteReceiptId = null;
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const user = window.api.getCachedUser();
+                if (user) {
+                    updateUserDisplay(user);
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        function updateUserDisplay(user) {
+            const avatar = user.username.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').textContent = avatar;
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('user-email').textContent = user.email;
+        }
+
+        // Load receipts
+        async function loadReceipts(page = 1) {
+            currentPage = page;
+            const listContainer = document.getElementById('receipts-list');
+
+            try {
+                showLoading(listContainer, 'Cargando facturas...');
+
+                const response = await window.api.getReceipts(page, 10);
+
+                if (response.success) {
+                    receipts = response.data.receipts;
+                    totalPages = response.data.total_pages;
+
+                    renderReceipts(receipts);
+                    updatePagination();
+                    updateTotalCount(response.data.total);
+                }
+            } catch (error) {
+                console.error('Error loading receipts:', error);
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <h3 class="empty-state-title">Error al cargar facturas</h3>
+                        <p class="empty-state-text">${error.message}</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderReceipts(receipts) {
+            const listContainer = document.getElementById('receipts-list');
+
+            if (!receipts || receipts.length === 0) {
+                listContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧾</div>
+                        <h3 class="empty-state-title">No hay facturas</h3>
+                        <p class="empty-state-text">Sube tu primera factura para comenzar</p>
+                        <a href="/upload.html" class="btn btn-primary">📤 Subir Factura</a>
+                    </div>
+                `;
+                return;
+            }
+
+            listContainer.innerHTML = receipts.map(receipt => `
+                <div class="receipt-item">
+                    <div class="receipt-info" onclick="window.location.href='/receipt-detail.html?id=${receipt.id}'">
+                        <div class="receipt-store">${receipt.store_name}</div>
+                        <div class="receipt-date">${formatDate(receipt.purchase_date)} • ${formatRelativeTime(receipt.created_at)}</div>
+                    </div>
+                    <div class="receipt-meta">
+                        <div class="receipt-items-count">${receipt.items_count || 0} items</div>
+                        <div class="receipt-amount">${formatCurrency(receipt.total_amount)}</div>
+                        <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${receipt.id}, '${receipt.store_name}', ${receipt.total_amount}); event.stopPropagation();">
+                            🗑️
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            const prevBtn = document.getElementById('prev-btn');
+            const nextBtn = document.getElementById('next-btn');
+            const pageInfo = document.getElementById('page-info');
+
+            if (totalPages > 1) {
+                pagination.style.display = 'flex';
+                pageInfo.textContent = `Página ${currentPage} de ${totalPages}`;
+                prevBtn.disabled = currentPage === 1;
+                nextBtn.disabled = currentPage === totalPages;
+            } else {
+                pagination.style.display = 'none';
+            }
+        }
+
+        function updateTotalCount(total) {
+            document.getElementById('total-count').textContent = total;
+        }
+
+        function loadPage(page) {
+            if (page >= 1 && page <= totalPages) {
+                loadReceipts(page);
+            }
+        }
+
+        // Delete modal
+        function openDeleteModal(id, storeName, amount) {
+            deleteReceiptId = id;
+            document.getElementById('delete-store-name').textContent = storeName;
+            document.getElementById('delete-amount').textContent = formatCurrency(amount);
+
+            const modal = new Modal('delete-modal');
+            modal.open();
+        }
+
+        function closeDeleteModal() {
+            deleteReceiptId = null;
+            const modal = new Modal('delete-modal');
+            modal.close();
+        }
+
+        async function confirmDelete() {
+            if (!deleteReceiptId) return;
+
+            const confirmBtn = document.getElementById('confirm-delete-btn');
+            confirmBtn.disabled = true;
+            confirmBtn.innerHTML = '<div class="spinner spinner-sm"></div> Eliminando...';
+
+            try {
+                const response = await window.api.deleteReceipt(deleteReceiptId);
+
+                if (response.success) {
+                    showToast('Factura eliminada exitosamente', 'success');
+                    closeDeleteModal();
+                    loadReceipts(currentPage);
+                } else {
+                    throw new Error(response.error || 'Error al eliminar');
+                }
+            } catch (error) {
+                showToast(error.message || 'Error al eliminar la factura', 'error');
+                confirmBtn.disabled = false;
+                confirmBtn.textContent = 'Eliminar';
+            }
+        }
+
+        // Search and filter
+        const searchInput = document.getElementById('search-input');
+        const sortSelect = document.getElementById('sort-select');
+
+        searchInput.addEventListener('input', debounce((e) => {
+            const query = e.target.value.toLowerCase();
+            const filtered = receipts.filter(r =>
+                r.store_name.toLowerCase().includes(query)
+            );
+            renderReceipts(filtered);
+        }, 300));
+
+        sortSelect.addEventListener('change', (e) => {
+            const sorted = [...receipts];
+            const sortBy = e.target.value;
+
+            switch (sortBy) {
+                case 'date-desc':
+                    sorted.sort((a, b) => new Date(b.purchase_date) - new Date(a.purchase_date));
+                    break;
+                case 'date-asc':
+                    sorted.sort((a, b) => new Date(a.purchase_date) - new Date(b.purchase_date));
+                    break;
+                case 'amount-desc':
+                    sorted.sort((a, b) => b.total_amount - a.total_amount);
+                    break;
+                case 'amount-asc':
+                    sorted.sort((a, b) => a.total_amount - b.total_amount);
+                    break;
+            }
+
+            renderReceipts(sorted);
+        });
+
+        function handleLogout() {
+            if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
+                window.api.logout();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Initialize
+        loadUserInfo();
+        loadReceipts();
+    </script>
+</body>
+</html>

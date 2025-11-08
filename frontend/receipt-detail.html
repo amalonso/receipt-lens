@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalle de Factura - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <style>
+        .detail-container {
+            max-width: 1000px;
+            margin: 0 auto;
+        }
+
+        .receipt-header {
+            background: linear-gradient(135deg, var(--primary-color), var(--primary-light));
+            color: white;
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            margin-bottom: 2rem;
+        }
+
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .items-table th {
+            background-color: var(--bg-secondary);
+            padding: 0.875rem;
+            text-align: left;
+            font-weight: 600;
+            border-bottom: 2px solid var(--border-color);
+        }
+
+        .items-table td {
+            padding: 0.875rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .items-table tr:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .category-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: white;
+        }
+
+        .total-row {
+            background-color: var(--bg-secondary);
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard.html" class="sidebar-logo">
+                    🧾 Receipt Lens
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/upload.html" class="nav-item">
+                    <span class="icon">📤</span>
+                    <span>Subir Factura</span>
+                </a>
+                <a href="/receipts.html" class="nav-item active">
+                    <span class="icon">🧾</span>
+                    <span>Mis Facturas</span>
+                </a>
+                <a href="/analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span>Analytics</span>
+                </a>
+                <a href="/profile.html" class="nav-item">
+                    <span class="icon">👤</span>
+                    <span>Perfil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Cargando...</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <a href="/receipts.html" class="btn btn-outline btn-sm">← Volver</a>
+                    <h1>Detalle de Factura</h1>
+                </div>
+                <div class="topbar-actions">
+                    <button class="btn btn-danger" onclick="deleteReceipt()" id="delete-btn">
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div class="detail-container" id="detail-container">
+                    <div class="flex items-center justify-center" style="padding: 3rem;">
+                        <div class="spinner"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        requireAuth();
+
+        let receiptId = null;
+        let receiptData = null;
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const user = window.api.getCachedUser();
+                if (user) {
+                    updateUserDisplay(user);
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        function updateUserDisplay(user) {
+            const avatar = user.username.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').textContent = avatar;
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('user-email').textContent = user.email;
+        }
+
+        // Get receipt ID from URL
+        const params = parseQuery();
+        receiptId = params.id;
+
+        if (!receiptId) {
+            window.location.href = '/receipts.html';
+        }
+
+        // Load receipt details
+        async function loadReceiptDetail() {
+            const container = document.getElementById('detail-container');
+
+            try {
+                showLoading(container, 'Cargando detalles...');
+
+                const response = await window.api.getReceipt(receiptId);
+
+                if (response.success) {
+                    receiptData = response.data;
+                    renderReceiptDetail(receiptData);
+                } else {
+                    throw new Error(response.error || 'Error al cargar la factura');
+                }
+            } catch (error) {
+                console.error('Error loading receipt:', error);
+                container.innerHTML = `
+                    <div class="card">
+                        <div class="empty-state">
+                            <div class="empty-state-icon">❌</div>
+                            <h3 class="empty-state-title">Error al cargar la factura</h3>
+                            <p class="empty-state-text">${error.message}</p>
+                            <a href="/receipts.html" class="btn btn-primary">Volver a Facturas</a>
+                        </div>
+                    </div>
+                `;
+            }
+        }
+
+        function renderReceiptDetail(data) {
+            const container = document.getElementById('detail-container');
+
+            const items = data.items || [];
+            const categoryCounts = {};
+            items.forEach(item => {
+                categoryCounts[item.category] = (categoryCounts[item.category] || 0) + 1;
+            });
+
+            container.innerHTML = `
+                <!-- Receipt Header -->
+                <div class="receipt-header">
+                    <div class="flex justify-between items-center">
+                        <div>
+                            <h2 style="margin-bottom: 0.5rem;">${data.store_name}</h2>
+                            <p style="opacity: 0.9; margin-bottom: 0;">${formatDate(data.purchase_date)}</p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 2.5rem; font-weight: 700;">${formatCurrency(data.total_amount)}</div>
+                            <div style="opacity: 0.9;">${items.length} productos</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Receipt Info -->
+                <div class="grid grid-cols-3 mb-4">
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="text-secondary" style="font-size: 0.875rem; margin-bottom: 0.5rem;">Total de Items</div>
+                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--primary-color);">${items.length}</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="text-secondary" style="font-size: 0.875rem; margin-bottom: 0.5rem;">Categorías</div>
+                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--success-color);">${Object.keys(categoryCounts).length}</div>
+                        </div>
+                    </div>
+
+                    <div class="card">
+                        <div class="card-body">
+                            <div class="text-secondary" style="font-size: 0.875rem; margin-bottom: 0.5rem;">Promedio por Item</div>
+                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--info-color);">${formatCurrency(data.total_amount / items.length)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Items Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Productos</h3>
+                    </div>
+                    <div class="card-body" style="padding: 0; overflow-x: auto;">
+                        <table class="items-table">
+                            <thead>
+                                <tr>
+                                    <th>Producto</th>
+                                    <th>Categoría</th>
+                                    <th style="text-align: center;">Cantidad</th>
+                                    <th style="text-align: right;">Precio Unitario</th>
+                                    <th style="text-align: right;">Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${items.map(item => `
+                                    <tr>
+                                        <td><strong>${item.product_name}</strong></td>
+                                        <td>
+                                            <span class="category-badge" style="background-color: ${getCategoryColor(item.category)};">
+                                                ${item.category}
+                                            </span>
+                                        </td>
+                                        <td style="text-align: center;">${item.quantity}</td>
+                                        <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>
+                                        <td style="text-align: right;"><strong>${formatCurrency(item.total_price)}</strong></td>
+                                    </tr>
+                                `).join('')}
+                                <tr class="total-row">
+                                    <td colspan="4" style="text-align: right;">TOTAL</td>
+                                    <td style="text-align: right;">${formatCurrency(data.total_amount)}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Metadata -->
+                <div class="card">
+                    <div class="card-header">
+                        <h4 class="card-title">Información Adicional</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="grid grid-cols-2">
+                            <div>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Fecha de Compra</p>
+                                <p><strong>${formatDate(data.purchase_date)}</strong></p>
+                            </div>
+                            <div>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Fecha de Carga</p>
+                                <p><strong>${formatRelativeTime(data.created_at)}</strong></p>
+                            </div>
+                            <div>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Estado</p>
+                                <p><span class="badge badge-success">✓ Procesado</span></p>
+                            </div>
+                            <div>
+                                <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">ID de Factura</p>
+                                <p><strong>#${data.id}</strong></p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function deleteReceipt() {
+            if (!receiptData) return;
+
+            if (!confirm(`¿Estás seguro que deseas eliminar la factura de ${receiptData.store_name}?`)) {
+                return;
+            }
+
+            const deleteBtn = document.getElementById('delete-btn');
+            deleteBtn.disabled = true;
+            deleteBtn.innerHTML = '<div class="spinner spinner-sm"></div> Eliminando...';
+
+            try {
+                const response = await window.api.deleteReceipt(receiptId);
+
+                if (response.success) {
+                    showToast('Factura eliminada exitosamente', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/receipts.html';
+                    }, 1000);
+                } else {
+                    throw new Error(response.error || 'Error al eliminar');
+                }
+            } catch (error) {
+                showToast(error.message || 'Error al eliminar la factura', 'error');
+                deleteBtn.disabled = false;
+                deleteBtn.innerHTML = '🗑️ Eliminar';
+            }
+        }
+
+        function handleLogout() {
+            if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
+                window.api.logout();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Initialize
+        loadUserInfo();
+        loadReceiptDetail();
+    </script>
+</body>
+</html>

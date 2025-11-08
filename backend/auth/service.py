@@ -4,6 +4,7 @@ Handles password hashing, JWT generation, and user authentication.
 """
 
 import logging
+import hashlib
 from datetime import datetime, timedelta
 from typing import Optional
 
@@ -40,6 +41,7 @@ class AuthService:
     def hash_password(password: str) -> str:
         """
         Hash a password using bcrypt.
+        For passwords longer than 72 bytes, pre-hash with SHA256.
 
         Args:
             password: Plain text password
@@ -47,12 +49,17 @@ class AuthService:
         Returns:
             str: Hashed password
         """
+        # If password is too long for bcrypt (>72 bytes), pre-hash with SHA256
+        if len(password.encode('utf-8')) > 72:
+            password = hashlib.sha256(password.encode('utf-8')).hexdigest()
+
         return pwd_context.hash(password)
 
     @staticmethod
     def verify_password(plain_password: str, hashed_password: str) -> bool:
         """
         Verify a password against its hash.
+        For passwords longer than 72 bytes, pre-hash with SHA256.
 
         Args:
             plain_password: Plain text password to verify
@@ -61,6 +68,10 @@ class AuthService:
         Returns:
             bool: True if password matches, False otherwise
         """
+        # If password is too long for bcrypt (>72 bytes), pre-hash with SHA256
+        if len(plain_password.encode('utf-8')) > 72:
+            plain_password = hashlib.sha256(plain_password.encode('utf-8')).hexdigest()
+
         return pwd_context.verify(plain_password, hashed_password)
 
     @staticmethod

@@ -32,13 +32,43 @@ class GoogleVisionAnalyzer(VisionAnalyzer):
         super().__init__(api_key)
         # If api_key is provided, it should be path to credentials JSON
         if api_key:
+            # Validate credentials file exists
+            if not os.path.exists(api_key):
+                raise VisionAnalyzerError(
+                    f"Google Vision credentials file not found at: {api_key}. "
+                    f"Please ensure the file exists and is mounted correctly in Docker. "
+                    f"Check your .env file and docker-compose.yml volumes configuration."
+                )
+
+            # Check if file is readable
+            if not os.access(api_key, os.R_OK):
+                raise VisionAnalyzerError(
+                    f"Google Vision credentials file is not readable: {api_key}. "
+                    f"Please check file permissions."
+                )
+
             # Set environment variable for Google Cloud SDK to find credentials
             os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = api_key
             logger.info(f"Set GOOGLE_APPLICATION_CREDENTIALS to: {api_key}")
-            self.client = vision.ImageAnnotatorClient.from_service_account_json(api_key)
+
+            try:
+                self.client = vision.ImageAnnotatorClient.from_service_account_json(api_key)
+                logger.info("Google Vision client initialized successfully")
+            except Exception as e:
+                raise VisionAnalyzerError(
+                    f"Failed to initialize Google Vision client with credentials at {api_key}: {str(e)}. "
+                    f"Please verify the credentials file is valid JSON and contains proper service account credentials."
+                )
         else:
             # Use default credentials from environment
-            self.client = vision.ImageAnnotatorClient()
+            try:
+                self.client = vision.ImageAnnotatorClient()
+                logger.info("Google Vision client initialized with default credentials")
+            except Exception as e:
+                raise VisionAnalyzerError(
+                    f"Failed to initialize Google Vision client with default credentials: {str(e)}. "
+                    f"Please set GOOGLE_VISION_CREDENTIALS in your .env file."
+                )
         logger.info("Google Vision analyzer initialized")
 
     def _parse_receipt_text(self, text: str) -> ClaudeAnalysisResponse:

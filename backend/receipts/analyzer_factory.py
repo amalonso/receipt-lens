@@ -69,7 +69,14 @@ class AnalyzerFactory:
                 analyzer = ClaudeReceiptAnalyzer(api_key=api_key)
 
             elif provider == VisionProvider.GOOGLE_VISION:
-                analyzer = GoogleVisionAnalyzer(api_key=api_key)
+                # For Google Vision, use credentials path from settings if not explicitly provided
+                credentials_path = api_key or settings.google_vision_credentials
+                if not credentials_path:
+                    raise VisionAnalyzerError(
+                        "Google Vision credentials not configured. "
+                        "Set GOOGLE_VISION_CREDENTIALS in .env file."
+                    )
+                analyzer = GoogleVisionAnalyzer(api_key=credentials_path)
 
             elif provider == VisionProvider.OCR_SPACE:
                 analyzer = OCRSpaceAnalyzer(api_key=api_key)

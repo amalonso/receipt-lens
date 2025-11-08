@@ -5,6 +5,7 @@ Uses Google Cloud Vision API to extract structured data from receipt images.
 
 import logging
 import json
+import os
 from typing import Optional
 from datetime import datetime, date
 
@@ -31,6 +32,9 @@ class GoogleVisionAnalyzer(VisionAnalyzer):
         super().__init__(api_key)
         # If api_key is provided, it should be path to credentials JSON
         if api_key:
+            # Set environment variable for Google Cloud SDK to find credentials
+            os.environ['GOOGLE_APPLICATION_CREDENTIALS'] = api_key
+            logger.info(f"Set GOOGLE_APPLICATION_CREDENTIALS to: {api_key}")
             self.client = vision.ImageAnnotatorClient.from_service_account_json(api_key)
         else:
             # Use default credentials from environment

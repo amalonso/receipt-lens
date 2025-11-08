@@ -18,6 +18,10 @@ pillow==10.1.0
 # AI/LLM
 anthropic==0.7.8
 
+# OCR Fallback (optional - for local receipt analysis)
+paddlepaddle==2.6.0
+paddleocr==2.7.3
+
 # Configuration
 python-dotenv==1.0.0
 pydantic==2.5.0

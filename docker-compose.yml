@@ -1,0 +1,63 @@
+version: '3.8'
+
+services:
+  db:
+    image: postgres:15-alpine
+    container_name: receipt-lens-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-receipt_lens}
+      POSTGRES_USER: ${POSTGRES_USER:-admin}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Please set POSTGRES_PASSWORD in .env file}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-admin} -d ${POSTGRES_DB:-receipt_lens}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - receipt-lens-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: receipt-lens-backend
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      - DATABASE_URL=postgresql://${POSTGRES_USER:-admin}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB:-receipt_lens}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+      - JWT_ALGORITHM=${JWT_ALGORITHM:-HS256}
+      - JWT_EXPIRATION_HOURS=${JWT_EXPIRATION_HOURS:-24}
+      - ENVIRONMENT=${ENVIRONMENT:-development}
+      - DEBUG=${DEBUG:-true}
+      - LOG_LEVEL=${LOG_LEVEL:-INFO}
+      - MAX_UPLOAD_SIZE_MB=${MAX_UPLOAD_SIZE_MB:-10}
+      - UPLOAD_DIR=${UPLOAD_DIR:-/app/uploads}
+      - ALLOWED_EXTENSIONS=${ALLOWED_EXTENSIONS:-jpg,jpeg,png,pdf}
+      - UPLOAD_RATE_LIMIT_PER_HOUR=${UPLOAD_RATE_LIMIT_PER_HOUR:-10}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:8000}
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      - ./uploads:/app/uploads
+    ports:
+      - "8000:8000"
+    networks:
+      - receipt-lens-network
+
+volumes:
+  pgdata:
+    driver: local
+
+networks:
+  receipt-lens-network:
+    driver: bridge

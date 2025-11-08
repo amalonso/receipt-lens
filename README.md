@@ -13,6 +13,9 @@ Sistema web auto-hospedado para analizar facturas de supermercado usando Claude 
 - **Múltiples Proveedores de Visión**: Soporta Claude, Google Vision, OCR.space y OpenAI
 - **Configuración Flexible**: Elige el proveedor que mejor se adapte a tus necesidades
 - **Opciones Gratuitas**: Google Vision (1,000/mes gratis) y OCR.space (500/día gratis)
+- **Claude Sonnet 4**: Extracción automática de datos de imágenes de facturas (opcional)
+- **PaddleOCR Fallback**: Sistema local de OCR cuando no hay API key configurada
+- **100% Local**: Funciona sin API externa, todo el procesamiento en tu servidor
 - **Categorización Inteligente**: 8 categorías automáticas (bebidas, carne, verduras, lácteos, panadería, limpieza, ocio, otros)
 - **Normalización de Productos**: Nombres de productos estandarizados
 - **Validación de Datos**: Verificación de consistencia entre items y total
@@ -44,6 +47,7 @@ Sistema web auto-hospedado para analizar facturas de supermercado usando Claude 
 - **Framework**: FastAPI (Python 3.11+)
 - **Base de Datos**: PostgreSQL 15 con SQLAlchemy 2.0
 - **IA/Visión**: Múltiples proveedores (Claude, Google Vision, OCR.space, OpenAI)
+- **OCR Local**: PaddleOCR 2.7+ (fallback sin API externa)
 - **Autenticación**: JWT (python-jose) + Bcrypt (passlib)
 - **Validación**: Pydantic 2.5+
 - **Testing**: pytest + httpx
@@ -75,6 +79,7 @@ receipt-lens/
 │   │   ├── models.py            # Receipt, Item, Category models
 │   │   ├── schemas.py           # Pydantic schemas
 │   │   ├── claude_analyzer.py   # Integración Claude AI
+│   │   ├── paddleocr_analyzer.py # Fallback OCR local
 │   │   ├── service.py           # Lógica de negocio
 │   │   └── router.py            # Endpoints (/api/receipts/*)
 │   ├── analytics/               # Módulo de analytics
@@ -118,6 +123,7 @@ receipt-lens/
 - **Docker** 20.10+
 - **Docker Compose** 2.0+
 - **API Key de Visión** (ver [VISION_PROVIDERS.md](VISION_PROVIDERS.md) para opciones gratuitas y de pago)
+- Si no configuras API key, se usará PaddleOCR local automáticamente
 
 ### Instalación
 
@@ -137,6 +143,11 @@ receipt-lens/
    # REQUERIDO: Contraseña segura para PostgreSQL
    POSTGRES_PASSWORD=tu_contraseña_segura
 
+
+=======
+   # OPCIONAL: Tu API key de Anthropic (si quieres máxima precisión)
+   # Si no la configuras, usará PaddleOCR local (gratuito, sin límites)
+   ANTHROPIC_API_KEY=sk-ant-api-key-aqui
    # REQUERIDO: Secret key para JWT (generar con: openssl rand -hex 32)
    JWT_SECRET_KEY=tu_secret_key_generada
 
@@ -155,6 +166,10 @@ receipt-lens/
    - **Para mejor precisión**: Usa `VISION_PROVIDER=claude` (requiere API key de pago)
    - **Para uso personal**: Usa `VISION_PROVIDER=google_vision` (1,000/mes gratis)
    - Ver [VISION_PROVIDERS.md](VISION_PROVIDERS.md) para comparación completa
+   **💡 Modos de Operación:**
+   - **Con API Key**: Usa Claude AI (máxima precisión, ~$0.01/factura)
+   - **Sin API Key**: Usa PaddleOCR local (gratuito, 100% privado, buena precisión)
+   - **Ver documentación completa**: [docs/PADDLEOCR_FALLBACK.md](docs/PADDLEOCR_FALLBACK.md)
 
 4. **Iniciar servicios con Docker**
    ```bash

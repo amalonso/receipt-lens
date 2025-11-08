@@ -24,6 +24,11 @@ from backend.receipts.schemas import (
 )
 from backend.receipts.analyzer_factory import get_analyzer
 from backend.receipts.vision_analyzer import VisionAnalyzerError
+from backend.receipts.paddleocr_analyzer import (
+    get_paddleocr_analyzer,
+    is_paddleocr_available,
+    PaddleOCRAnalyzerError
+)
 
 logger = logging.getLogger(__name__)
 
@@ -224,13 +229,36 @@ class ReceiptService:
                     detail=f"This receipt has already been uploaded (Receipt ID: {existing.id})"
                 )
 
-            # Analyze with Claude
-            logger.info("Starting Claude AI analysis...")
-            analyzer = get_analyzer()
-            analysis = await analyzer.analyze_receipt(file_path)
+            # Determine which analyzer to use
+            use_claude = settings.anthropic_api_key is not None
 
-            # Validate analysis
-            analyzer.validate_analysis(analysis)
+            if use_claude:
+                # Analyze with Claude
+                logger.info("Starting Claude AI analysis...")
+                try:
+                    analyzer = get_analyzer()
+                    analysis = await analyzer.analyze_receipt(file_path)
+                    # Validate analysis
+                    analyzer.validate_analysis(analysis)
+                except ClaudeAnalyzerError as claude_error:
+                    # If Claude fails and PaddleOCR is available, fallback
+                    if is_paddleocr_available():
+                        logger.warning(f"Claude analysis failed, falling back to PaddleOCR: {str(claude_error)}")
+                        use_claude = False
+                    else:
+                        raise
+
+            if not use_claude:
+                # Use PaddleOCR fallback
+                if not is_paddleocr_available():
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail="No analysis service available. Please configure ANTHROPIC_API_KEY or install PaddleOCR."
+                    )
+
+                logger.info("Starting PaddleOCR analysis (local fallback)...")
+                paddleocr_analyzer = get_paddleocr_analyzer()
+                analysis = await paddleocr_analyzer.analyze_receipt(file_path)
 
             # Parse date
             try:
@@ -287,7 +315,8 @@ class ReceiptService:
                 os.remove(file_path)
             raise
 
-        except VisionAnalyzerError as e:
+
+        except (VisionAnalyzerError, PaddleOCRAnalyzerError) as e:
             db.rollback()
             # Delete uploaded file on error
             if os.path.exists(file_path):

@@ -3,7 +3,7 @@ Application configuration using Pydantic Settings.
 Loads environment variables from .env file.
 """
 
-from typing import List
+from typing import List, Optional
 from pydantic_settings import BaseSettings
 from pydantic import Field, validator
 
@@ -24,9 +24,9 @@ class Settings(BaseSettings):
     )
 
     # API Keys
-    anthropic_api_key: str = Field(
-        default="",
-        description="Anthropic API key for Claude AI"
+    anthropic_api_key: Optional[str] = Field(
+        default=None,
+        description="Anthropic API key for Claude AI (optional - will use PaddleOCR fallback if not provided)"
     )
     google_vision_credentials: str = Field(
         default="",

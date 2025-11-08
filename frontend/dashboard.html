@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard.html" class="sidebar-logo">
+                    🧾 Receipt Lens
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item active">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/upload.html" class="nav-item">
+                    <span class="icon">📤</span>
+                    <span>Subir Factura</span>
+                </a>
+                <a href="/receipts.html" class="nav-item">
+                    <span class="icon">🧾</span>
+                    <span>Mis Facturas</span>
+                </a>
+                <a href="/analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span>Analytics</span>
+                </a>
+                <a href="/profile.html" class="nav-item">
+                    <span class="icon">👤</span>
+                    <span>Perfil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Cargando...</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Dashboard</h1>
+                </div>
+                <div class="topbar-actions">
+                    <a href="/upload.html" class="btn btn-primary">
+                        📤 Subir Factura
+                    </a>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Stats Grid -->
+                <div class="stats-grid" id="stats-grid">
+                    <div class="card">
+                        <div class="flex items-center justify-center" style="padding: 2rem;">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-2" style="margin-bottom: 2rem;">
+                    <!-- Category Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Gastos por Categoría</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="category-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- Top Products -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Productos Más Comprados</h3>
+                        </div>
+                        <div id="top-products-list" style="max-height: 300px; overflow-y: auto;">
+                            <div class="flex items-center justify-center" style="padding: 2rem;">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Receipts -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Facturas Recientes</h3>
+                        <a href="/receipts.html" class="btn btn-outline btn-sm">Ver Todas</a>
+                    </div>
+                    <div class="card-body">
+                        <div class="receipt-list" id="recent-receipts">
+                            <div class="flex items-center justify-center" style="padding: 2rem;">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        // Check authentication
+        if (!requireAuth()) {
+            // Redirect will happen in requireAuth
+        }
+
+        let categoryChart = null;
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const user = window.api.getCachedUser();
+                if (user) {
+                    updateUserDisplay(user);
+                }
+
+                const response = await window.api.getCurrentUser();
+                if (response.success) {
+                    updateUserDisplay(response.data);
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        function updateUserDisplay(user) {
+            const avatar = user.username.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').textContent = avatar;
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('user-email').textContent = user.email;
+        }
+
+        // Load dashboard data
+        async function loadDashboard() {
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear();
+
+            try {
+                // Load monthly summary
+                const summaryResponse = await window.api.getMonthlySummary(month, year);
+
+                if (summaryResponse.success) {
+                    renderStats(summaryResponse.data);
+                    renderCategoryChart(summaryResponse.data.categories);
+                    renderTopProducts(summaryResponse.data.top_products);
+                }
+
+                // Load recent receipts
+                const receiptsResponse = await window.api.getReceipts(1, 5);
+                if (receiptsResponse.success) {
+                    renderRecentReceipts(receiptsResponse.data.receipts);
+                }
+            } catch (error) {
+                console.error('Error loading dashboard:', error);
+                showToast('Error al cargar el dashboard', 'error');
+            }
+        }
+
+        function renderStats(data) {
+            const statsGrid = document.getElementById('stats-grid');
+            statsGrid.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${formatCurrency(data.total_spent)}</div>
+                            <div class="stat-label">Gasto Total</div>
+                        </div>
+                        <div class="stat-icon">💰</div>
+                    </div>
+                    <div class="stat-trend">Este mes</div>
+                </div>
+
+                <div class="stat-card" style="border-left-color: var(--success-color);">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${data.total_receipts}</div>
+                            <div class="stat-label">Facturas</div>
+                        </div>
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">🧾</div>
+                    </div>
+                    <div class="stat-trend">Este mes</div>
+                </div>
+
+                <div class="stat-card" style="border-left-color: var(--info-color);">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${data.total_items}</div>
+                            <div class="stat-label">Productos</div>
+                        </div>
+                        <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🛒</div>
+                    </div>
+                    <div class="stat-trend">Este mes</div>
+                </div>
+
+                <div class="stat-card" style="border-left-color: var(--warning-color);">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${formatCurrency(data.avg_per_receipt)}</div>
+                            <div class="stat-label">Promedio por Factura</div>
+                        </div>
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">📊</div>
+                    </div>
+                    <div class="stat-trend">Este mes</div>
+                </div>
+            `;
+        }
+
+        function renderCategoryChart(categories) {
+            const ctx = document.getElementById('category-chart');
+
+            if (categoryChart) {
+                categoryChart.destroy();
+            }
+
+            if (!categories || categories.length === 0) {
+                ctx.parentElement.innerHTML = '<div class="empty-state"><p>No hay datos de categorías</p></div>';
+                return;
+            }
+
+            categoryChart = new Chart(ctx, {
+                type: 'doughnut',
+                data: {
+                    labels: categories.map(c => c.category),
+                    datasets: [{
+                        data: categories.map(c => c.total),
+                        backgroundColor: categories.map(c => getCategoryColor(c.category)),
+                    }],
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    const label = context.label || '';
+                                    const value = formatCurrency(context.raw);
+                                    const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                    const percentage = ((context.raw / total) * 100).toFixed(1);
+                                    return `${label}: ${value} (${percentage}%)`;
+                                },
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        function renderTopProducts(products) {
+            const container = document.getElementById('top-products-list');
+
+            if (!products || products.length === 0) {
+                container.innerHTML = '<div class="empty-state"><p>No hay productos aún</p></div>';
+                return;
+            }
+
+            container.innerHTML = products.map((product, index) => `
+                <div style="padding: 0.875rem; border-bottom: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center;">
+                    <div style="display: flex; align-items: center; gap: 0.75rem;">
+                        <span style="font-weight: 700; color: var(--primary-color); font-size: 1.125rem;">${index + 1}</span>
+                        <div>
+                            <div style="font-weight: 600;">${product.product}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary);">${product.quantity} unidades</div>
+                        </div>
+                    </div>
+                    <div style="text-align: right;">
+                        <div style="font-weight: 700;">${formatCurrency(product.total)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function renderRecentReceipts(receipts) {
+            const container = document.getElementById('recent-receipts');
+
+            if (!receipts || receipts.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧾</div>
+                        <h3 class="empty-state-title">No hay facturas aún</h3>
+                        <p class="empty-state-text">Sube tu primera factura para comenzar</p>
+                        <a href="/upload.html" class="btn btn-primary">📤 Subir Factura</a>
+                    </div>
+                `;
+                return;
+            }
+
+            container.innerHTML = receipts.map(receipt => `
+                <div class="receipt-item" onclick="window.location.href='/receipt-detail.html?id=${receipt.id}'">
+                    <div class="receipt-info">
+                        <div class="receipt-store">${receipt.store_name}</div>
+                        <div class="receipt-date">${formatDate(receipt.purchase_date)}</div>
+                    </div>
+                    <div class="receipt-meta">
+                        <div class="receipt-items-count">${receipt.items_count || 0} items</div>
+                        <div class="receipt-amount">${formatCurrency(receipt.total_amount)}</div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function handleLogout() {
+            if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
+                window.api.logout();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        // Close sidebar when clicking overlay
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Initialize
+        loadUserInfo();
+        loadDashboard();
+    </script>
+</body>
+</html>

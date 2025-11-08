@@ -10,9 +10,10 @@ from datetime import datetime
 from fastapi import FastAPI, Request, status
 from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from sqlalchemy.exc import SQLAlchemyError
+import os
 
 from backend.config import settings
 from backend.database.session import engine, init_db
@@ -137,30 +138,6 @@ async def health_check():
     }
 
 
-# Root endpoint
-@app.get("/", tags=["Root"])
-async def root():
-    """
-    Root endpoint with API information.
-
-    Returns:
-        dict: API information
-    """
-    return {
-        "success": True,
-        "data": {
-            "name": "Receipt Lens API",
-            "version": "1.0.0",
-            "description": "Self-hosted system for analyzing grocery receipts",
-            "docs": "/api/docs" if settings.debug else "disabled in production"
-        },
-        "error": None
-    }
-
-
-# Mount static files (will be used for frontend)
-# app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
-
 # Include routers
 from backend.auth.router import router as auth_router
 from backend.receipts.router import router as receipts_router
@@ -170,6 +147,37 @@ app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(receipts_router, prefix="/api/receipts", tags=["Receipts"])
 app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
 
+# Mount static files for frontend
+app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
+
+
+# Serve frontend HTML files
+@app.get("/{path:path}")
+async def serve_frontend(path: str):
+    """
+    Serve frontend HTML files.
+    Falls back to index.html for client-side routing.
+    """
+    # Skip API routes
+    if path.startswith("api/"):
+        return JSONResponse(
+            status_code=404,
+            content={"success": False, "data": None, "error": "Not found"}
+        )
+
+    # Serve HTML files
+    if path == "" or path == "/":
+        path = "index.html"
+    elif not path.endswith(".html"):
+        path = f"{path}.html"
+
+    file_path = os.path.join("frontend", path)
+
+    if os.path.exists(file_path):
+        return FileResponse(file_path)
+
+    # Fall back to index.html for client-side routing
+    return FileResponse("frontend/index.html")
 
 if __name__ == "__main__":
     import uvicorn

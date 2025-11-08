@@ -83,11 +83,22 @@ receipt-lens/
 │       ├── base.py              # SQLAlchemy Base
 │       ├── session.py           # Engine y SessionLocal
 │       └── init.sql             # Schema PostgreSQL
-├── frontend/                     # Frontend (pendiente implementación)
+├── frontend/                     # Frontend web application
 │   ├── static/
 │   │   ├── css/
+│   │   │   ├── main.css          # Estilos principales
+│   │   │   └── dashboard.css     # Estilos del dashboard
 │   │   └── js/
-│   └── templates/
+│   │       ├── api.js            # Cliente API
+│   │       └── utils.js          # Funciones utilitarias
+│   ├── index.html                # Página de inicio
+│   ├── login.html                # Login/Registro
+│   ├── dashboard.html            # Dashboard principal
+│   ├── upload.html               # Subida de facturas
+│   ├── receipts.html             # Lista de facturas
+│   ├── receipt-detail.html       # Detalle de factura
+│   ├── analytics.html            # Analytics y gráficos
+│   └── profile.html              # Perfil de usuario
 ├── tests/
 │   ├── conftest.py              # Fixtures de pytest
 │   ├── test_auth.py             # Tests de autenticación (28 tests)
@@ -165,7 +176,67 @@ curl -X POST http://localhost:8000/api/auth/register \
   }'
 ```
 
+## 🖥️ Uso del Frontend
+
+Una vez iniciado el sistema con Docker, accede a la aplicación web en:
+
+**http://localhost:8000**
+
+### Flujo de Uso
+
+1. **Registro/Login**
+   - Crea una cuenta nueva o inicia sesión con tus credenciales
+   - Las contraseñas deben tener al menos 8 caracteres, incluir mayúsculas y números
+   - El sistema te redirigirá automáticamente al dashboard
+
+2. **Dashboard Principal**
+   - Vista general de tus gastos del mes
+   - Estadísticas de facturas, productos y tiendas visitadas
+   - Gráfico de gastos por categoría (bebidas, carne, verduras, etc.)
+   - Lista de productos más comprados
+   - Acceso rápido a facturas recientes
+
+3. **Subir Facturas**
+   - Arrastra y suelta tu factura o haz clic para seleccionar
+   - Formatos soportados: JPG, PNG, PDF (máx. 10MB)
+   - Claude AI analiza automáticamente la imagen
+   - Extracción de tienda, fecha, productos, precios y categorías
+   - Vista previa del resultado con detalles completos
+
+4. **Mis Facturas**
+   - Lista completa de todas tus facturas
+   - Búsqueda por nombre de tienda
+   - Ordenamiento por fecha o monto
+   - Eliminación de facturas con confirmación
+   - Clic en cualquier factura para ver detalle completo
+
+5. **Analytics**
+   - **Resumen del período**: Estadísticas generales por mes
+   - **Comparación de supermercados**: Índice de precios, mejores y peores ofertas por tienda
+   - **Evolución de precios**: Busca cualquier producto y ve su historial de precios con gráficos interactivos
+   - Tendencias de precios (aumentando, disminuyendo, estables)
+   - Recomendaciones de ahorro
+
+6. **Perfil**
+   - Información de tu cuenta
+   - Estadísticas personales
+   - Información del sistema
+
+### Características del Frontend
+
+- **Diseño Moderno**: Interfaz limpia y profesional con paleta de colores coherente
+- **Responsive**: Funciona perfectamente en desktop, tablet y móvil
+- **Sidebar Navigation**: Navegación intuitiva con iconos y destacado de sección activa
+- **Visualizaciones**: Gráficos interactivos con Chart.js para análisis visual
+- **Drag & Drop**: Subida de archivos mediante arrastre para mejor UX
+- **Validación en Tiempo Real**: Feedback inmediato en formularios
+- **Notificaciones Toast**: Alertas elegantes para acciones del usuario
+- **Carga Asíncrona**: Spinners y estados de carga para mejor feedback
+- **Modal Dialogs**: Confirmaciones elegantes para acciones destructivas
+
 ## 📖 Uso de la API
+
+El sistema también expone una API REST completa que puedes usar programáticamente.
 
 ### Autenticación
 
@@ -455,12 +526,15 @@ services:
 - [x] Evolución de precios
 - [x] Detección de tendencias
 
-### 🔄 Fase 3 - Frontend (En progreso)
-- [ ] Login/Register UI
-- [ ] Upload con drag & drop
-- [ ] Dashboard con Chart.js
-- [ ] Lista y detalle de facturas
-- [ ] Visualizaciones de analytics
+### ✅ Fase 3 - Frontend (Completado)
+- [x] Login/Register UI con validación
+- [x] Upload con drag & drop
+- [x] Dashboard con Chart.js
+- [x] Lista y detalle de facturas
+- [x] Visualizaciones de analytics
+- [x] Diseño responsive y moderno
+- [x] Navegación con sidebar
+- [x] Página de perfil de usuario
 
 ### 📅 Futuras Mejoras
 - [ ] Tests de receipts y analytics

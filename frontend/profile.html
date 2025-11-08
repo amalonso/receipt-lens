@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfil - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard.html" class="sidebar-logo">
+                    🧾 Receipt Lens
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/upload.html" class="nav-item">
+                    <span class="icon">📤</span>
+                    <span>Subir Factura</span>
+                </a>
+                <a href="/receipts.html" class="nav-item">
+                    <span class="icon">🧾</span>
+                    <span>Mis Facturas</span>
+                </a>
+                <a href="/analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span>Analytics</span>
+                </a>
+                <a href="/profile.html" class="nav-item active">
+                    <span class="icon">👤</span>
+                    <span>Perfil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Cargando...</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Mi Perfil</h1>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <div style="max-width: 800px; margin: 0 auto;">
+                    <!-- Profile Card -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3 class="card-title">Información de la Cuenta</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="flex items-center gap-4 mb-4">
+                                <div style="width: 80px; height: 80px; border-radius: 50%; background: linear-gradient(135deg, var(--primary-color), var(--primary-light)); display: flex; align-items: center; justify-content: center; font-size: 2.5rem; font-weight: 700; color: white;" id="profile-avatar">
+                                    U
+                                </div>
+                                <div>
+                                    <h3 id="profile-username" style="margin-bottom: 0.25rem;">Cargando...</h3>
+                                    <p id="profile-email" style="color: var(--text-secondary); margin-bottom: 0;">email@example.com</p>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2">
+                                <div>
+                                    <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">ID de Usuario</p>
+                                    <p><strong id="profile-id">-</strong></p>
+                                </div>
+                                <div>
+                                    <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Miembro desde</p>
+                                    <p><strong id="profile-created">-</strong></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Stats Card -->
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h3 class="card-title">Estadísticas</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="stats-grid" id="user-stats">
+                                <div class="card">
+                                    <div class="flex items-center justify-center" style="padding: 2rem;">
+                                        <div class="spinner"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- About Card -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3 class="card-title">Acerca de Receipt Lens</h3>
+                        </div>
+                        <div class="card-body">
+                            <p style="margin-bottom: 1rem;">
+                                Receipt Lens es un sistema de análisis de facturas potenciado por Claude AI de Anthropic.
+                            </p>
+                            <div class="grid grid-cols-2">
+                                <div>
+                                    <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Versión</p>
+                                    <p><strong>1.0.0</strong></p>
+                                </div>
+                                <div>
+                                    <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">IA</p>
+                                    <p><strong>Claude Sonnet 4</strong></p>
+                                </div>
+                                <div>
+                                    <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Backend</p>
+                                    <p><strong>FastAPI + PostgreSQL</strong></p>
+                                </div>
+                                <div>
+                                    <p style="color: var(--text-secondary); margin-bottom: 0.25rem;">Frontend</p>
+                                    <p><strong>Vanilla JS + Chart.js</strong></p>
+                                </div>
+                            </div>
+
+                            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                                <h4 style="font-size: 1rem; margin-bottom: 0.75rem;">Características</h4>
+                                <ul style="list-style: none; padding: 0;">
+                                    <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                        <span>🤖</span>
+                                        <span>Análisis automático con Claude AI</span>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                        <span>📊</span>
+                                        <span>Analytics avanzados y comparativas</span>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                        <span>🔒</span>
+                                        <span>Autenticación segura con JWT</span>
+                                    </li>
+                                    <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
+                                        <span>📈</span>
+                                        <span>Seguimiento de precios e insights</span>
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div style="margin-top: 1.5rem; padding-top: 1.5rem; border-top: 1px solid var(--border-color);">
+                                <p style="color: var(--text-secondary); font-size: 0.875rem; margin-bottom: 0;">
+                                    &copy; 2025 Receipt Lens. Sistema auto-hospedado de análisis de facturas.
+                                </p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        requireAuth();
+
+        // Load user info and stats
+        async function loadUserProfile() {
+            try {
+                const response = await window.api.getCurrentUser();
+
+                if (response.success) {
+                    const user = response.data;
+                    updateProfileDisplay(user);
+
+                    // Also update sidebar
+                    const avatar = user.username.charAt(0).toUpperCase();
+                    document.getElementById('user-avatar').textContent = avatar;
+                    document.getElementById('user-name').textContent = user.username;
+                    document.getElementById('user-email').textContent = user.email;
+                }
+
+                // Load user stats
+                await loadUserStats();
+            } catch (error) {
+                console.error('Error loading profile:', error);
+                showToast('Error al cargar el perfil', 'error');
+            }
+        }
+
+        function updateProfileDisplay(user) {
+            const avatar = user.username.charAt(0).toUpperCase();
+            document.getElementById('profile-avatar').textContent = avatar;
+            document.getElementById('profile-username').textContent = user.username;
+            document.getElementById('profile-email').textContent = user.email;
+            document.getElementById('profile-id').textContent = `#${user.id}`;
+            document.getElementById('profile-created').textContent = formatDate(user.created_at);
+        }
+
+        async function loadUserStats() {
+            const container = document.getElementById('user-stats');
+
+            try {
+                // Get current month summary for stats
+                const now = new Date();
+                const month = now.getMonth() + 1;
+                const year = now.getFullYear();
+
+                const response = await window.api.getMonthlySummary(month, year);
+
+                if (response.success) {
+                    const data = response.data;
+
+                    container.innerHTML = `
+                        <div class="stat-card">
+                            <div class="stat-header">
+                                <div>
+                                    <div class="stat-value">${data.total_receipts || 0}</div>
+                                    <div class="stat-label">Facturas Totales</div>
+                                </div>
+                                <div class="stat-icon">🧾</div>
+                            </div>
+                            <div class="stat-trend">Este mes</div>
+                        </div>
+
+                        <div class="stat-card" style="border-left-color: var(--success-color);">
+                            <div class="stat-header">
+                                <div>
+                                    <div class="stat-value">${formatCurrency(data.total_spent || 0)}</div>
+                                    <div class="stat-label">Total Gastado</div>
+                                </div>
+                                <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">💰</div>
+                            </div>
+                            <div class="stat-trend">Este mes</div>
+                        </div>
+
+                        <div class="stat-card" style="border-left-color: var(--info-color);">
+                            <div class="stat-header">
+                                <div>
+                                    <div class="stat-value">${data.stores_visited?.length || 0}</div>
+                                    <div class="stat-label">Tiendas Visitadas</div>
+                                </div>
+                                <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🏪</div>
+                            </div>
+                            <div class="stat-trend">Este mes</div>
+                        </div>
+
+                        <div class="stat-card" style="border-left-color: var(--warning-color);">
+                            <div class="stat-header">
+                                <div>
+                                    <div class="stat-value">${data.total_items || 0}</div>
+                                    <div class="stat-label">Productos Comprados</div>
+                                </div>
+                                <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">🛒</div>
+                            </div>
+                            <div class="stat-trend">Este mes</div>
+                        </div>
+                    `;
+                }
+            } catch (error) {
+                console.error('Error loading stats:', error);
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        Error al cargar las estadísticas
+                    </div>
+                `;
+            }
+        }
+
+        function handleLogout() {
+            if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
+                window.api.logout();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Initialize
+        loadUserProfile();
+    </script>
+</body>
+</html>

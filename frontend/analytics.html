@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/dashboard.html" class="sidebar-logo">
+                    🧾 Receipt Lens
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Dashboard</span>
+                </a>
+                <a href="/upload.html" class="nav-item">
+                    <span class="icon">📤</span>
+                    <span>Subir Factura</span>
+                </a>
+                <a href="/receipts.html" class="nav-item">
+                    <span class="icon">🧾</span>
+                    <span>Mis Facturas</span>
+                </a>
+                <a href="/analytics.html" class="nav-item active">
+                    <span class="icon">📈</span>
+                    <span>Analytics</span>
+                </a>
+                <a href="/profile.html" class="nav-item">
+                    <span class="icon">👤</span>
+                    <span>Perfil</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">U</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Cargando...</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Analytics</h1>
+                </div>
+                <div class="topbar-actions">
+                    <select id="period-select" class="form-control" style="width: auto;" onchange="updatePeriod()">
+                        <option value="1">Este mes</option>
+                        <option value="3">Últimos 3 meses</option>
+                        <option value="6" selected>Últimos 6 meses</option>
+                        <option value="12">Último año</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Monthly Summary -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Resumen del Período</h3>
+                    </div>
+                    <div class="card-body">
+                        <div class="stats-grid" id="monthly-stats">
+                            <div class="card">
+                                <div class="flex items-center justify-center" style="padding: 2rem;">
+                                    <div class="spinner"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Store Comparison -->
+                <div class="card mb-4">
+                    <div class="card-header">
+                        <h3 class="card-title">Comparación de Supermercados</h3>
+                        <p class="card-subtitle">Índice de precios y mejores ofertas por tienda</p>
+                    </div>
+                    <div class="card-body" id="store-comparison">
+                        <div class="flex items-center justify-center" style="padding: 2rem;">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Price Evolution -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3 class="card-title">Evolución de Precios</h3>
+                        <div class="flex gap-4">
+                            <input
+                                type="text"
+                                id="product-search"
+                                class="form-control"
+                                placeholder="Buscar producto..."
+                                style="max-width: 300px;"
+                            >
+                            <button class="btn btn-primary btn-sm" onclick="searchPriceEvolution()">
+                                Buscar
+                            </button>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div id="price-evolution-container">
+                            <div class="empty-state">
+                                <div class="empty-state-icon">📊</div>
+                                <h3 class="empty-state-title">Busca un producto</h3>
+                                <p class="empty-state-text">Ingresa el nombre de un producto para ver su evolución de precios</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        requireAuth();
+
+        let currentPeriod = 6;
+        let priceChart = null;
+
+        // Load user info
+        async function loadUserInfo() {
+            try {
+                const user = window.api.getCachedUser();
+                if (user) {
+                    updateUserDisplay(user);
+                }
+            } catch (error) {
+                console.error('Error loading user info:', error);
+            }
+        }
+
+        function updateUserDisplay(user) {
+            const avatar = user.username.charAt(0).toUpperCase();
+            document.getElementById('user-avatar').textContent = avatar;
+            document.getElementById('user-name').textContent = user.username;
+            document.getElementById('user-email').textContent = user.email;
+        }
+
+        // Load analytics data
+        async function loadAnalytics() {
+            await Promise.all([
+                loadMonthlySummary(),
+                loadStoreComparison(),
+            ]);
+        }
+
+        async function loadMonthlySummary() {
+            const container = document.getElementById('monthly-stats');
+            const now = new Date();
+            const month = now.getMonth() + 1;
+            const year = now.getFullYear();
+
+            try {
+                const response = await window.api.getMonthlySummary(month, year);
+
+                if (response.success) {
+                    renderMonthlySummary(response.data);
+                }
+            } catch (error) {
+                console.error('Error loading monthly summary:', error);
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        Error al cargar el resumen mensual
+                    </div>
+                `;
+            }
+        }
+
+        function renderMonthlySummary(data) {
+            const container = document.getElementById('monthly-stats');
+
+            container.innerHTML = `
+                <div class="stat-card">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${formatCurrency(data.total_spent)}</div>
+                            <div class="stat-label">Total Gastado</div>
+                        </div>
+                        <div class="stat-icon">💰</div>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="border-left-color: var(--success-color);">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${data.total_receipts}</div>
+                            <div class="stat-label">Facturas</div>
+                        </div>
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">🧾</div>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="border-left-color: var(--info-color);">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${data.total_items}</div>
+                            <div class="stat-label">Productos</div>
+                        </div>
+                        <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🛒</div>
+                    </div>
+                </div>
+
+                <div class="stat-card" style="border-left-color: var(--warning-color);">
+                    <div class="stat-header">
+                        <div>
+                            <div class="stat-value">${data.stores_visited?.length || 0}</div>
+                            <div class="stat-label">Tiendas Visitadas</div>
+                        </div>
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">🏪</div>
+                    </div>
+                </div>
+            `;
+        }
+
+        async function loadStoreComparison() {
+            const container = document.getElementById('store-comparison');
+
+            try {
+                showLoading(container, 'Analizando precios...');
+
+                const response = await window.api.getStoreComparison(currentPeriod);
+
+                if (response.success) {
+                    renderStoreComparison(response.data);
+                }
+            } catch (error) {
+                console.error('Error loading store comparison:', error);
+                container.innerHTML = `
+                    <div class="alert alert-error">
+                        Error al cargar la comparación de tiendas
+                    </div>
+                `;
+            }
+        }
+
+        function renderStoreComparison(data) {
+            const container = document.getElementById('store-comparison');
+
+            if (!data || Object.keys(data).length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🏪</div>
+                        <h3 class="empty-state-title">No hay datos de tiendas</h3>
+                        <p class="empty-state-text">Sube más facturas para ver comparaciones</p>
+                    </div>
+                `;
+                return;
+            }
+
+            const stores = Object.entries(data);
+
+            container.innerHTML = `
+                <div class="grid grid-cols-1" style="gap: 1.5rem;">
+                    ${stores.map(([storeName, storeData]) => {
+                        const priceIndex = storeData.price_index || 100;
+                        const isPricey = priceIndex > 105;
+                        const isCheap = priceIndex < 95;
+                        const indexColor = isPricey ? 'var(--danger-color)' : isCheap ? 'var(--success-color)' : 'var(--text-secondary)';
+
+                        return `
+                            <div class="card">
+                                <div class="card-header">
+                                    <div>
+                                        <h4 class="card-title">${storeName}</h4>
+                                        <p class="card-subtitle">
+                                            ${storeData.total_receipts} visitas • ${formatCurrency(storeData.total_spent)} gastado
+                                        </p>
+                                    </div>
+                                    <div style="text-align: right;">
+                                        <div style="font-size: 1.75rem; font-weight: 700; color: ${indexColor};">
+                                            ${priceIndex.toFixed(1)}
+                                        </div>
+                                        <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                            Índice de precios
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="card-body">
+                                    <div class="grid grid-cols-2">
+                                        <div>
+                                            <h5 style="font-size: 0.875rem; color: var(--success-color); margin-bottom: 0.75rem;">
+                                                ✓ Mejores Ofertas (${storeData.best_deals?.length || 0})
+                                            </h5>
+                                            ${storeData.best_deals?.length > 0 ? `
+                                                <ul style="list-style: none; padding: 0; font-size: 0.875rem;">
+                                                    ${storeData.best_deals.slice(0, 5).map(deal => `
+                                                        <li style="padding: 0.25rem 0;">
+                                                            ${deal.product}: ${formatCurrency(deal.price)}
+                                                            <span style="color: var(--success-color);">
+                                                                (${deal.savings_percent.toFixed(0)}% menos)
+                                                            </span>
+                                                        </li>
+                                                    `).join('')}
+                                                </ul>
+                                            ` : '<p style="color: var(--text-secondary); font-size: 0.875rem;">No hay datos</p>'}
+                                        </div>
+                                        <div>
+                                            <h5 style="font-size: 0.875rem; color: var(--danger-color); margin-bottom: 0.75rem;">
+                                                ✗ Precios Altos (${storeData.worst_deals?.length || 0})
+                                            </h5>
+                                            ${storeData.worst_deals?.length > 0 ? `
+                                                <ul style="list-style: none; padding: 0; font-size: 0.875rem;">
+                                                    ${storeData.worst_deals.slice(0, 5).map(deal => `
+                                                        <li style="padding: 0.25rem 0;">
+                                                            ${deal.product}: ${formatCurrency(deal.price)}
+                                                            <span style="color: var(--danger-color);">
+                                                                (+${deal.markup_percent.toFixed(0)}% más)
+                                                            </span>
+                                                        </li>
+                                                    `).join('')}
+                                                </ul>
+                                            ` : '<p style="color: var(--text-secondary); font-size: 0.875rem;">No hay datos</p>'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                    }).join('')}
+                </div>
+            `;
+        }
+
+        async function searchPriceEvolution() {
+            const productInput = document.getElementById('product-search');
+            const product = productInput.value.trim();
+
+            if (!product) {
+                showToast('Por favor ingresa un producto', 'warning');
+                return;
+            }
+
+            const container = document.getElementById('price-evolution-container');
+            showLoading(container, 'Buscando evolución de precios...');
+
+            try {
+                const response = await window.api.getPriceEvolution(product, currentPeriod);
+
+                if (response.success) {
+                    renderPriceEvolution(response.data, product);
+                }
+            } catch (error) {
+                console.error('Error loading price evolution:', error);
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">❌</div>
+                        <h3 class="empty-state-title">No se encontró el producto</h3>
+                        <p class="empty-state-text">Intenta con otro nombre de producto</p>
+                    </div>
+                `;
+            }
+        }
+
+        function renderPriceEvolution(data, productName) {
+            const container = document.getElementById('price-evolution-container');
+
+            if (!data.price_history || Object.keys(data.price_history).length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📊</div>
+                        <h3 class="empty-state-title">No hay datos de precios</h3>
+                        <p class="empty-state-text">No se encontró historial de precios para "${productName}"</p>
+                    </div>
+                `;
+                return;
+            }
+
+            // Prepare chart data
+            const datasets = Object.entries(data.price_history).map(([store, history]) => ({
+                label: store,
+                data: history.map(item => ({
+                    x: new Date(item.date),
+                    y: item.price,
+                })),
+                borderColor: getCategoryColor(store),
+                backgroundColor: getCategoryColor(store) + '40',
+                tension: 0.4,
+                fill: false,
+            }));
+
+            container.innerHTML = `
+                <div style="margin-bottom: 1.5rem;">
+                    <h4>${productName}</h4>
+                    <div class="grid grid-cols-3" style="margin-top: 1rem;">
+                        ${Object.entries(data.store_stats || {}).map(([store, stats]) => `
+                            <div style="padding: 1rem; background: var(--bg-secondary); border-radius: var(--border-radius);">
+                                <div style="font-weight: 600; margin-bottom: 0.5rem;">${store}</div>
+                                <div style="font-size: 0.875rem; color: var(--text-secondary);">
+                                    Promedio: ${formatCurrency(stats.avg_price)}<br>
+                                    Min: ${formatCurrency(stats.min_price)} • Max: ${formatCurrency(stats.max_price)}
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                <div style="height: 300px; position: relative;">
+                    <canvas id="price-chart"></canvas>
+                </div>
+                ${data.trend ? `
+                    <div class="alert alert-info" style="margin-top: 1rem;">
+                        <strong>Tendencia:</strong>
+                        ${data.trend === 'increasing' ? '📈 Precios en aumento' :
+                          data.trend === 'decreasing' ? '📉 Precios en descenso' :
+                          '➡️ Precios estables'}
+                    </div>
+                ` : ''}
+                ${data.best_store ? `
+                    <div class="alert alert-success" style="margin-top: 1rem;">
+                        <strong>Mejor tienda:</strong> ${data.best_store} (${formatCurrency(data.store_stats[data.best_store].avg_price)} promedio)
+                    </div>
+                ` : ''}
+            `;
+
+            // Create chart
+            const ctx = document.getElementById('price-chart');
+            if (priceChart) {
+                priceChart.destroy();
+            }
+
+            priceChart = new Chart(ctx, {
+                type: 'line',
+                data: { datasets },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'bottom',
+                        },
+                        tooltip: {
+                            callbacks: {
+                                label: (context) => {
+                                    return `${context.dataset.label}: ${formatCurrency(context.parsed.y)}`;
+                                },
+                            },
+                        },
+                    },
+                    scales: {
+                        x: {
+                            type: 'time',
+                            time: {
+                                unit: 'day',
+                                displayFormats: {
+                                    day: 'dd/MM',
+                                },
+                            },
+                        },
+                        y: {
+                            ticks: {
+                                callback: (value) => formatCurrency(value),
+                            },
+                        },
+                    },
+                },
+            });
+        }
+
+        function updatePeriod() {
+            currentPeriod = parseInt(document.getElementById('period-select').value);
+            loadStoreComparison();
+        }
+
+        // Search on Enter key
+        document.getElementById('product-search').addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                searchPriceEvolution();
+            }
+        });
+
+        function handleLogout() {
+            if (confirm('¿Estás seguro que quieres cerrar sesión?')) {
+                window.api.logout();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
+        }
+
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Initialize
+        loadUserInfo();
+        loadAnalytics();
+    </script>
+</body>
+</html>

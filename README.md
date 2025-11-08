@@ -10,7 +10,12 @@ Sistema web auto-hospedado para analizar facturas de supermercado usando Claude 
 ## ✨ Features Principales
 
 ### 🤖 Análisis con IA
-- **Claude Sonnet 4**: Extracción automática de datos de imágenes de facturas
+- **Múltiples Proveedores de Visión**: Soporta Claude, Google Vision, OCR.space y OpenAI
+- **Configuración Flexible**: Elige el proveedor que mejor se adapte a tus necesidades
+- **Opciones Gratuitas**: Google Vision (1,000/mes gratis) y OCR.space (500/día gratis)
+- **Claude Sonnet 4**: Extracción automática de datos de imágenes de facturas (opcional)
+- **PaddleOCR Fallback**: Sistema local de OCR cuando no hay API key configurada
+- **100% Local**: Funciona sin API externa, todo el procesamiento en tu servidor
 - **Categorización Inteligente**: 8 categorías automáticas (bebidas, carne, verduras, lácteos, panadería, limpieza, ocio, otros)
 - **Normalización de Productos**: Nombres de productos estandarizados
 - **Validación de Datos**: Verificación de consistencia entre items y total
@@ -41,7 +46,8 @@ Sistema web auto-hospedado para analizar facturas de supermercado usando Claude 
 ### Backend
 - **Framework**: FastAPI (Python 3.11+)
 - **Base de Datos**: PostgreSQL 15 con SQLAlchemy 2.0
-- **IA**: Anthropic Claude API (claude-sonnet-4-20250514)
+- **IA/Visión**: Múltiples proveedores (Claude, Google Vision, OCR.space, OpenAI)
+- **OCR Local**: PaddleOCR 2.7+ (fallback sin API externa)
 - **Autenticación**: JWT (python-jose) + Bcrypt (passlib)
 - **Validación**: Pydantic 2.5+
 - **Testing**: pytest + httpx
@@ -73,6 +79,7 @@ receipt-lens/
 │   │   ├── models.py            # Receipt, Item, Category models
 │   │   ├── schemas.py           # Pydantic schemas
 │   │   ├── claude_analyzer.py   # Integración Claude AI
+│   │   ├── paddleocr_analyzer.py # Fallback OCR local
 │   │   ├── service.py           # Lógica de negocio
 │   │   └── router.py            # Endpoints (/api/receipts/*)
 │   ├── analytics/               # Módulo de analytics
@@ -115,7 +122,8 @@ receipt-lens/
 
 - **Docker** 20.10+
 - **Docker Compose** 2.0+
-- **Anthropic API Key** ([Obtener aquí](https://console.anthropic.com/))
+- **API Key de Visión** (ver [VISION_PROVIDERS.md](VISION_PROVIDERS.md) para opciones gratuitas y de pago)
+- Si no configuras API key, se usará PaddleOCR local automáticamente
 
 ### Instalación
 
@@ -135,12 +143,33 @@ receipt-lens/
    # REQUERIDO: Contraseña segura para PostgreSQL
    POSTGRES_PASSWORD=tu_contraseña_segura
 
-   # REQUERIDO: Tu API key de Anthropic
-   ANTHROPIC_API_KEY=sk-ant-api-key-aqui
 
+=======
+   # OPCIONAL: Tu API key de Anthropic (si quieres máxima precisión)
+   # Si no la configuras, usará PaddleOCR local (gratuito, sin límites)
+   ANTHROPIC_API_KEY=sk-ant-api-key-aqui
    # REQUERIDO: Secret key para JWT (generar con: openssl rand -hex 32)
    JWT_SECRET_KEY=tu_secret_key_generada
+
+   # Proveedor de Visión (ver VISION_PROVIDERS.md para más opciones)
+   VISION_PROVIDER=ocrspace  # o claude, google_vision, openai
+
+   # API Keys (solo configurar para el proveedor que uses)
+   OCRSPACE_API_KEY=helloworld  # Gratis - 500 requests/día
+   # ANTHROPIC_API_KEY=sk-ant-...  # Claude (de pago)
+   # GOOGLE_VISION_CREDENTIALS=/path/to/credentials.json  # 1,000/mes gratis
+   # OPENAI_API_KEY=sk-...  # OpenAI (de pago)
    ```
+
+   **📋 Guía de Proveedores:**
+   - **Para empezar gratis**: Usa `VISION_PROVIDER=ocrspace` (500/día gratis)
+   - **Para mejor precisión**: Usa `VISION_PROVIDER=claude` (requiere API key de pago)
+   - **Para uso personal**: Usa `VISION_PROVIDER=google_vision` (1,000/mes gratis)
+   - Ver [VISION_PROVIDERS.md](VISION_PROVIDERS.md) para comparación completa
+   **💡 Modos de Operación:**
+   - **Con API Key**: Usa Claude AI (máxima precisión, ~$0.01/factura)
+   - **Sin API Key**: Usa PaddleOCR local (gratuito, 100% privado, buena precisión)
+   - **Ver documentación completa**: [docs/PADDLEOCR_FALLBACK.md](docs/PADDLEOCR_FALLBACK.md)
 
 4. **Iniciar servicios con Docker**
    ```bash
@@ -469,8 +498,14 @@ POSTGRES_DB=receipt_lens
 POSTGRES_USER=admin
 POSTGRES_PASSWORD=contraseña_segura
 
-# API Keys
+# Proveedor de Visión
+VISION_PROVIDER=claude|google_vision|ocrspace|openai
+
+# API Keys (configurar solo el proveedor que uses)
 ANTHROPIC_API_KEY=sk-ant-...
+GOOGLE_VISION_CREDENTIALS=/path/to/credentials.json
+OCRSPACE_API_KEY=helloworld
+OPENAI_API_KEY=sk-...
 
 # Seguridad
 JWT_SECRET_KEY=secret_key_generada
@@ -564,11 +599,15 @@ docker-compose down -v
 docker-compose up -d
 ```
 
-### Claude API devuelve errores
+### Vision API devuelve errores
 
-- Verificar API key en `.env`
-- Verificar quota en https://console.anthropic.com/
-- Revisar logs: `docker-compose logs backend | grep claude`
+- Verificar que `VISION_PROVIDER` esté configurado correctamente
+- Verificar API key correspondiente en `.env`
+- Para Claude: verificar quota en https://console.anthropic.com/
+- Para Google Vision: verificar credenciales y proyecto
+- Para OCR.space: verificar límites de rate (500/día gratis)
+- Revisar logs: `docker-compose logs backend | grep vision`
+- Ver [VISION_PROVIDERS.md](VISION_PROVIDERS.md) para troubleshooting específico
 
 ### Upload de archivos falla
 

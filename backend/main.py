@@ -163,11 +163,11 @@ async def root():
 
 # Include routers
 from backend.auth.router import router as auth_router
-# from backend.receipts.router import router as receipts_router
+from backend.receipts.router import router as receipts_router
 # from backend.analytics.router import router as analytics_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
-# app.include_router(receipts_router, prefix="/api/receipts", tags=["Receipts"])
+app.include_router(receipts_router, prefix="/api/receipts", tags=["Receipts"])
 # app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
 
 

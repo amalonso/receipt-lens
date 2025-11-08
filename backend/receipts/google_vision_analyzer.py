@@ -1,0 +1,175 @@
+"""
+Google Cloud Vision API analyzer for receipt image processing.
+Uses Google Cloud Vision API to extract structured data from receipt images.
+"""
+
+import logging
+import json
+from typing import Optional
+from datetime import datetime, date
+
+from google.cloud import vision
+from google.cloud.vision_v1 import types
+
+from backend.config import settings
+from backend.receipts.schemas import ClaudeAnalysisResponse, ItemSchema
+from backend.receipts.vision_analyzer import VisionAnalyzer, VisionAnalyzerError
+
+logger = logging.getLogger(__name__)
+
+
+class GoogleVisionAnalyzer(VisionAnalyzer):
+    """Service for analyzing receipt images using Google Cloud Vision API."""
+
+    def __init__(self, api_key: Optional[str] = None):
+        """
+        Initialize Google Vision analyzer.
+
+        Args:
+            api_key: Google Cloud API key or credentials path
+        """
+        super().__init__(api_key)
+        # If api_key is provided, it should be path to credentials JSON
+        if api_key:
+            self.client = vision.ImageAnnotatorClient.from_service_account_json(api_key)
+        else:
+            # Use default credentials from environment
+            self.client = vision.ImageAnnotatorClient()
+        logger.info("Google Vision analyzer initialized")
+
+    def _parse_receipt_text(self, text: str) -> ClaudeAnalysisResponse:
+        """
+        Parse extracted text into structured receipt data.
+        Uses basic heuristics to extract information.
+
+        Args:
+            text: Raw text extracted from receipt
+
+        Returns:
+            ClaudeAnalysisResponse with extracted data
+
+        Raises:
+            VisionAnalyzerError: If parsing fails
+        """
+        try:
+            lines = [line.strip() for line in text.split('\n') if line.strip()]
+
+            # Initialize default values
+            store_name = "Unknown Store"
+            purchase_date = date.today().strftime('%Y-%m-%d')
+            total_amount = 0.0
+            items = []
+
+            # Try to extract store name (usually first few lines)
+            if lines:
+                store_name = lines[0]
+
+            # Try to find total amount (look for common patterns)
+            for line in lines:
+                line_upper = line.upper()
+                if any(keyword in line_upper for keyword in ['TOTAL', 'SUMA', 'IMPORTE']):
+                    # Try to extract number
+                    import re
+                    numbers = re.findall(r'\d+[.,]\d{2}', line)
+                    if numbers:
+                        total_str = numbers[-1].replace(',', '.')
+                        total_amount = float(total_str)
+                        break
+
+            # Try to find date
+            import re
+            date_pattern = r'\d{1,2}[/-]\d{1,2}[/-]\d{2,4}'
+            for line in lines:
+                date_match = re.search(date_pattern, line)
+                if date_match:
+                    date_str = date_match.group()
+                    # Try to parse date
+                    try:
+                        for fmt in ['%d/%m/%Y', '%d-%m-%Y', '%d/%m/%y', '%d-%m-%y']:
+                            try:
+                                parsed_date = datetime.strptime(date_str, fmt)
+                                purchase_date = parsed_date.strftime('%Y-%m-%d')
+                                break
+                            except ValueError:
+                                continue
+                    except:
+                        pass
+                    break
+
+            # Create at least one item with the total
+            if total_amount > 0:
+                items.append(ItemSchema(
+                    product_name="Items from receipt",
+                    category="otros",
+                    quantity=1.0,
+                    unit_price=total_amount,
+                    total_price=total_amount
+                ))
+
+            return ClaudeAnalysisResponse(
+                store_name=store_name,
+                purchase_date=purchase_date,
+                items=items,
+                total_amount=total_amount
+            )
+
+        except Exception as e:
+            logger.error(f"Error parsing receipt text: {str(e)}")
+            raise VisionAnalyzerError(f"Failed to parse receipt data: {str(e)}")
+
+    async def analyze_receipt(
+        self,
+        image_path: str,
+        max_tokens: int = 2048
+    ) -> ClaudeAnalysisResponse:
+        """
+        Analyze a receipt image using Google Cloud Vision API.
+
+        Args:
+            image_path: Path to the receipt image file
+            max_tokens: Not used for Google Vision (kept for interface compatibility)
+
+        Returns:
+            ClaudeAnalysisResponse with extracted data
+
+        Raises:
+            VisionAnalyzerError: If analysis fails
+        """
+        logger.info(f"Starting receipt analysis with Google Vision: {image_path}")
+
+        try:
+            # Read image file
+            image_bytes = self._read_image_bytes(image_path)
+
+            # Create Image object
+            image = types.Image(content=image_bytes)
+
+            # Perform text detection
+            logger.info("Sending request to Google Cloud Vision API...")
+            response = self.client.text_detection(image=image)
+
+            if response.error.message:
+                raise VisionAnalyzerError(
+                    f"Google Vision API error: {response.error.message}"
+                )
+
+            # Extract text from response
+            texts = response.text_annotations
+            if not texts:
+                raise VisionAnalyzerError("No text detected in image")
+
+            # First annotation contains all text
+            full_text = texts[0].description
+            logger.debug(f"Extracted text: {full_text[:200]}...")
+
+            # Parse the text into structured data
+            analysis = self._parse_receipt_text(full_text)
+
+            logger.info(f"Receipt analysis completed successfully")
+            return analysis
+
+        except Exception as e:
+            if isinstance(e, VisionAnalyzerError):
+                raise
+            logger.error(f"Unexpected error during analysis: {str(e)}")
+            raise VisionAnalyzerError(f"Analysis failed: {str(e)}")

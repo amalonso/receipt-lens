@@ -22,7 +22,8 @@ from backend.receipts.schemas import (
     ReceiptListItem,
     ItemSchema
 )
-from backend.receipts.claude_analyzer import get_analyzer, ClaudeAnalyzerError
+from backend.receipts.analyzer_factory import get_analyzer
+from backend.receipts.vision_analyzer import VisionAnalyzerError
 from backend.receipts.paddleocr_analyzer import (
     get_paddleocr_analyzer,
     is_paddleocr_available,
@@ -314,12 +315,13 @@ class ReceiptService:
                 os.remove(file_path)
             raise
 
-        except (ClaudeAnalyzerError, PaddleOCRAnalyzerError) as e:
+
+        except (VisionAnalyzerError, PaddleOCRAnalyzerError) as e:
             db.rollback()
             # Delete uploaded file on error
             if os.path.exists(file_path):
                 os.remove(file_path)
-            logger.error(f"Analysis error: {str(e)}")
+            logger.error(f"Vision analysis error: {str(e)}")
             raise HTTPException(
                 status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                 detail=f"Could not analyze receipt: {str(e)}"

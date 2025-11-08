@@ -17,10 +17,28 @@ class Settings(BaseSettings):
         description="PostgreSQL connection URL"
     )
 
+    # Vision API Configuration
+    vision_provider: str = Field(
+        default="claude",
+        description="Vision API provider: claude|google_vision|ocrspace|openai"
+    )
+
     # API Keys
     anthropic_api_key: Optional[str] = Field(
         default=None,
         description="Anthropic API key for Claude AI (optional - will use PaddleOCR fallback if not provided)"
+    )
+    google_vision_credentials: str = Field(
+        default="",
+        description="Path to Google Cloud Vision credentials JSON file"
+    )
+    ocrspace_api_key: str = Field(
+        default="helloworld",
+        description="OCR.space API key (default: helloworld for testing)"
+    )
+    openai_api_key: str = Field(
+        default="",
+        description="OpenAI API key for GPT-4o Vision"
     )
 
     # Security
@@ -86,6 +104,18 @@ class Settings(BaseSettings):
     def parse_allowed_extensions(cls, v: str) -> List[str]:
         """Parse comma-separated extensions into a list."""
         return [ext.strip().lower() for ext in v.split(',')]
+
+    @validator('vision_provider')
+    def validate_vision_provider(cls, v: str) -> str:
+        """Validate vision provider value."""
+        valid_providers = ['claude', 'google_vision', 'ocrspace', 'openai']
+        v = v.lower()
+        if v not in valid_providers:
+            raise ValueError(
+                f"Invalid vision provider: {v}. "
+                f"Must be one of: {', '.join(valid_providers)}"
+            )
+        return v
 
     class Config:
         env_file = ".env"

@@ -1,13 +1,13 @@
 """
-Claude AI analyzer for receipt image processing.
-Uses Anthropic's Claude API to extract structured data from receipt images.
+OpenAI GPT-4 Vision analyzer for receipt image processing.
+Uses OpenAI's GPT-4o Vision API to extract structured data from receipt images.
 """
 
 import logging
 import json
 from typing import Optional
 
-from anthropic import Anthropic, APIError
+from openai import AsyncOpenAI
 
 from backend.config import settings
 from backend.receipts.schemas import ClaudeAnalysisResponse
@@ -16,10 +16,10 @@ from backend.receipts.vision_analyzer import VisionAnalyzer, VisionAnalyzerError
 logger = logging.getLogger(__name__)
 
 
-class ClaudeReceiptAnalyzer(VisionAnalyzer):
-    """Service for analyzing receipt images using Claude AI."""
+class OpenAIVisionAnalyzer(VisionAnalyzer):
+    """Service for analyzing receipt images using OpenAI GPT-4o Vision."""
 
-    # Prompt template for receipt analysis
+    # Prompt template for receipt analysis (similar to Claude)
     ANALYSIS_PROMPT = """Analiza esta imagen de factura de supermercado y extrae la siguiente información en formato JSON estricto:
 
 {
@@ -47,24 +47,26 @@ Reglas importantes:
 
     def __init__(self, api_key: Optional[str] = None):
         """
-        Initialize Claude analyzer.
+        Initialize OpenAI Vision analyzer.
 
         Args:
-            api_key: Anthropic API key (defaults to settings.anthropic_api_key)
+            api_key: OpenAI API key (defaults to settings.openai_api_key)
         """
         super().__init__(api_key)
-        self.api_key = api_key or settings.anthropic_api_key
-        self.client = Anthropic(api_key=self.api_key)
-        self.model = "claude-sonnet-4-20250514"  # Claude Sonnet 4
-        logger.info(f"Claude analyzer initialized with model: {self.model}")
+        self.api_key = api_key or getattr(settings, 'openai_api_key', None)
+        if not self.api_key:
+            raise VisionAnalyzerError("OpenAI API key is required")
 
+        self.client = AsyncOpenAI(api_key=self.api_key)
+        self.model = "gpt-4o"  # GPT-4o with vision
+        logger.info(f"OpenAI Vision analyzer initialized with model: {self.model}")
 
-    def _parse_claude_response(self, response_text: str) -> ClaudeAnalysisResponse:
+    def _parse_openai_response(self, response_text: str) -> ClaudeAnalysisResponse:
         """
-        Parse Claude's JSON response into structured data.
+        Parse OpenAI's JSON response into structured data.
 
         Args:
-            response_text: Raw text response from Claude
+            response_text: Raw text response from OpenAI
 
         Returns:
             ClaudeAnalysisResponse object
@@ -73,12 +75,12 @@ Reglas importantes:
             VisionAnalyzerError: If response cannot be parsed
         """
         try:
-            # Try to extract JSON from response (in case Claude adds extra text)
+            # Try to extract JSON from response (in case GPT adds extra text)
             json_start = response_text.find('{')
             json_end = response_text.rfind('}') + 1
 
             if json_start == -1 or json_end == 0:
-                raise VisionAnalyzerError("No JSON object found in Claude's response")
+                raise VisionAnalyzerError("No JSON object found in OpenAI's response")
 
             json_str = response_text[json_start:json_end]
             data = json.loads(json_str)
@@ -97,10 +99,10 @@ Reglas importantes:
         except json.JSONDecodeError as e:
             logger.error(f"JSON parsing error: {str(e)}")
             logger.debug(f"Response text: {response_text}")
-            raise VisionAnalyzerError(f"Invalid JSON response from Claude: {str(e)}")
+            raise VisionAnalyzerError(f"Invalid JSON response from OpenAI: {str(e)}")
 
         except Exception as e:
-            logger.error(f"Error parsing Claude response: {str(e)}")
+            logger.error(f"Error parsing OpenAI response: {str(e)}")
             raise VisionAnalyzerError(f"Failed to parse response: {str(e)}")
 
     async def analyze_receipt(
@@ -109,11 +111,11 @@ Reglas importantes:
         max_tokens: int = 2048
     ) -> ClaudeAnalysisResponse:
         """
-        Analyze a receipt image using Claude AI.
+        Analyze a receipt image using OpenAI GPT-4o Vision.
 
         Args:
             image_path: Path to the receipt image file
-            max_tokens: Maximum tokens for Claude's response
+            max_tokens: Maximum tokens for OpenAI's response
 
         Returns:
             ClaudeAnalysisResponse with extracted data
@@ -121,70 +123,48 @@ Reglas importantes:
         Raises:
             VisionAnalyzerError: If analysis fails
         """
-        logger.info(f"Starting receipt analysis: {image_path}")
+        logger.info(f"Starting receipt analysis with OpenAI Vision: {image_path}")
 
         try:
             # Encode image
             image_data, media_type = self._encode_image(image_path)
 
-            # Call Claude API
-            logger.info("Sending request to Claude API...")
-            message = self.client.messages.create(
+            # Call OpenAI API
+            logger.info("Sending request to OpenAI API...")
+            response = await self.client.chat.completions.create(
                 model=self.model,
-                max_tokens=max_tokens,
                 messages=[
                     {
                         "role": "user",
                         "content": [
                             {
-                                "type": "image",
-                                "source": {
-                                    "type": "base64",
-                                    "media_type": media_type,
-                                    "data": image_data,
-                                },
+                                "type": "image_url",
+                                "image_url": {
+                                    "url": f"data:{media_type};base64,{image_data}"
+                                }
                             },
                             {
                                 "type": "text",
                                 "text": self.ANALYSIS_PROMPT
                             }
-                        ],
+                        ]
                     }
                 ],
+                max_tokens=max_tokens
             )
 
             # Extract response text
-            response_text = message.content[0].text
-            logger.debug(f"Claude response: {response_text[:200]}...")
+            response_text = response.choices[0].message.content
+            logger.debug(f"OpenAI response: {response_text[:200]}...")
 
             # Parse response
-            analysis = self._parse_claude_response(response_text)
+            analysis = self._parse_openai_response(response_text)
 
             logger.info(f"Receipt analysis completed successfully")
             return analysis
 
-        except APIError as e:
-            logger.error(f"Claude API error: {str(e)}")
-            raise VisionAnalyzerError(f"Claude API error: {str(e)}")
-
         except Exception as e:
-            logger.error(f"Unexpected error during analysis: {str(e)}")
-            raise VisionAnalyzerError(f"Analysis failed: {str(e)}")
-
-
-
-# Global analyzer instance (lazy initialization)
-_analyzer: Optional[ClaudeReceiptAnalyzer] = None
-
-
-def get_analyzer() -> ClaudeReceiptAnalyzer:
-    """
-    Get or create the global Claude analyzer instance.
-
-    Returns:
-        ClaudeReceiptAnalyzer instance
-    """
-    global _analyzer
-    if _analyzer is None:
-        _analyzer = ClaudeReceiptAnalyzer()
-    return _analyzer
+            if isinstance(e, VisionAnalyzerError):
+                raise
+            logger.error(f"OpenAI API error: {str(e)}")
+            raise VisionAnalyzerError(f"OpenAI API error: {str(e)}")

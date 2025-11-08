@@ -5,7 +5,7 @@ Provides common dependencies like database sessions and authentication.
 
 from typing import Generator, Optional
 from fastapi import Depends, HTTPException, status
-from fastapi.security import HTTPBearer, HTTPAuthCredential
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
 
@@ -33,7 +33,7 @@ def get_db() -> Generator[Session, None, None]:
 
 
 async def get_current_user_id(
-    credentials: HTTPAuthCredential = Depends(security),
+    credentials: HTTPAuthorizationCredentials = Depends(security),
     db: Session = Depends(get_db)
 ) -> int:
     """

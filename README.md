@@ -1,330 +1,556 @@
 # Receipt Lens 🧾🔍
 
-Self-hosted web system for analyzing grocery receipts using Claude AI. Upload photos of your receipts, extract structured data, and gain insights into your shopping habits.
+Sistema web auto-hospedado para analizar facturas de supermercado usando Claude AI. Sube fotos de tus tickets, extrae datos estructurados y obtén insights sobre tus hábitos de compra.
 
-## 📋 Features
+[![Python](https://img.shields.io/badge/Python-3.11+-blue.svg)](https://www.python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.104+-green.svg)](https://fastapi.tiangolo.com/)
+[![PostgreSQL](https://img.shields.io/badge/PostgreSQL-15-blue.svg)](https://www.postgresql.org/)
+[![Claude](https://img.shields.io/badge/Claude-Sonnet%204-orange.svg)](https://www.anthropic.com/)
 
-- **AI-Powered Analysis**: Uses Anthropic's Claude Sonnet 4 to extract detailed information from receipt images
-- **Automatic Categorization**: Products are automatically categorized (beverages, meat, vegetables, dairy, bakery, cleaning, leisure, others)
-- **Historical Tracking**: Store and search through all your receipts
-- **Smart Analytics**:
-  - Monthly spending summaries by category
-  - Store price comparisons
-  - Product price evolution tracking
-  - Personalized savings recommendations
-- **Multi-format Support**: JPG, PNG, and PDF receipts
-- **Secure Authentication**: JWT-based user authentication
-- **Duplicate Detection**: Prevents uploading the same receipt twice
-- **Self-hosted**: Complete control over your data
+## ✨ Features Principales
 
-## 🛠️ Tech Stack
+### 🤖 Análisis con IA
+- **Claude Sonnet 4**: Extracción automática de datos de imágenes de facturas
+- **Categorización Inteligente**: 8 categorías automáticas (bebidas, carne, verduras, lácteos, panadería, limpieza, ocio, otros)
+- **Normalización de Productos**: Nombres de productos estandarizados
+- **Validación de Datos**: Verificación de consistencia entre items y total
+
+### 📊 Analytics Avanzados
+- **Resúmenes Mensuales**: Gasto total, desglose por categoría, productos más comprados
+- **Comparativa de Supermercados**: Índice de precios, mejores y peores ofertas
+- **Evolución de Precios**: Seguimiento histórico de productos específicos
+- **Detección de Tendencias**: Precios aumentando, disminuyendo o estables
+- **Recomendaciones**: Ahorro potencial comprando en diferentes tiendas
+
+### 🔒 Seguridad
+- **Autenticación JWT**: Tokens con expiración de 24 horas
+- **Bcrypt Hashing**: Contraseñas encriptadas con salt
+- **Detección de Duplicados**: Hash SHA256 de imágenes
+- **Validación de Inputs**: Pydantic schemas en todos los endpoints
+- **User Ownership**: Verificación de propiedad en todas las queries
+
+### 📈 Características Técnicas
+- **API REST Completa**: 13 endpoints documentados con OpenAPI/Swagger
+- **Paginación**: Listas de facturas con límites configurables
+- **Formato Estandarizado**: Respuestas JSON consistentes
+- **Manejo de Errores**: Logging detallado y mensajes user-friendly
+- **Transacciones Seguras**: Rollback automático en errores
+
+## 🛠️ Stack Tecnológico
 
 ### Backend
 - **Framework**: FastAPI (Python 3.11+)
-- **Database**: PostgreSQL 15
-- **ORM**: SQLAlchemy 2.0
-- **AI**: Anthropic Claude API (Sonnet 4)
-- **Authentication**: JWT with bcrypt
+- **Base de Datos**: PostgreSQL 15 con SQLAlchemy 2.0
+- **IA**: Anthropic Claude API (claude-sonnet-4-20250514)
+- **Autenticación**: JWT (python-jose) + Bcrypt (passlib)
+- **Validación**: Pydantic 2.5+
+- **Testing**: pytest + httpx
 
-### Frontend
-- **Stack**: HTML5, CSS3, Vanilla JavaScript
-- **Charts**: Chart.js for data visualization
-- **Design**: Responsive CSS Grid/Flexbox
+### Infraestructura
+- **Containerización**: Docker + Docker Compose
+- **Almacenamiento**: Sistema de archivos local con estructura por usuario
+- **Logging**: Python logging con niveles configurables
 
-### Infrastructure
-- **Containerization**: Docker + Docker Compose
-- **Testing**: pytest with 70% minimum coverage
-
-## 📁 Project Structure
+## 📁 Estructura del Proyecto
 
 ```
 receipt-lens/
-├── docker-compose.yml          # Docker orchestration
-├── Dockerfile                  # Container image definition
-├── .env.example               # Environment variables template
-├── requirements.txt           # Python dependencies
-├── pytest.ini                 # Test configuration
+├── docker-compose.yml              # Orquestación Docker
+├── Dockerfile                      # Imagen del backend
+├── .env.example                   # Template de configuración
+├── requirements.txt               # Dependencias Python
+├── pytest.ini                     # Configuración de tests
 ├── backend/
-│   ├── main.py               # FastAPI application entry point
-│   ├── config.py             # Application settings
-│   ├── dependencies.py       # Dependency injection
-│   ├── auth/                 # Authentication module
-│   ├── receipts/             # Receipt processing module
-│   ├── analytics/            # Analytics module
-│   └── database/             # Database configuration and schema
-├── frontend/
-│   ├── static/               # CSS, JS, images
-│   └── templates/            # HTML templates
-├── tests/                    # Test suite
-└── uploads/                  # Uploaded receipt images
+│   ├── main.py                   # Aplicación FastAPI
+│   ├── config.py                 # Settings con Pydantic
+│   ├── dependencies.py           # Dependency injection
+│   ├── auth/                     # Módulo de autenticación
+│   │   ├── models.py            # User model
+│   │   ├── schemas.py           # Pydantic schemas
+│   │   ├── service.py           # Lógica de negocio
+│   │   └── router.py            # Endpoints (/api/auth/*)
+│   ├── receipts/                # Módulo de facturas
+│   │   ├── models.py            # Receipt, Item, Category models
+│   │   ├── schemas.py           # Pydantic schemas
+│   │   ├── claude_analyzer.py   # Integración Claude AI
+│   │   ├── service.py           # Lógica de negocio
+│   │   └── router.py            # Endpoints (/api/receipts/*)
+│   ├── analytics/               # Módulo de analytics
+│   │   ├── schemas.py           # Pydantic schemas
+│   │   ├── service.py           # Cálculos y agregaciones
+│   │   └── router.py            # Endpoints (/api/analytics/*)
+│   └── database/
+│       ├── base.py              # SQLAlchemy Base
+│       ├── session.py           # Engine y SessionLocal
+│       └── init.sql             # Schema PostgreSQL
+├── frontend/                     # Frontend (pendiente implementación)
+│   ├── static/
+│   │   ├── css/
+│   │   └── js/
+│   └── templates/
+├── tests/
+│   ├── conftest.py              # Fixtures de pytest
+│   ├── test_auth.py             # Tests de autenticación (28 tests)
+│   └── test_receipts.py         # Tests de receipts (pendiente)
+├── scripts/
+│   └── init_db.py               # Script de inicialización DB
+└── uploads/                      # Almacenamiento de imágenes
+    └── user_{id}/               # Carpeta por usuario
 ```
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### Prerrequisitos
 
-- Docker 20.10+
-- Docker Compose 2.0+
-- Anthropic API Key ([Get one here](https://console.anthropic.com/))
+- **Docker** 20.10+
+- **Docker Compose** 2.0+
+- **Anthropic API Key** ([Obtener aquí](https://console.anthropic.com/))
 
-### Installation
+### Instalación
 
-1. **Clone the repository**
+1. **Clonar el repositorio**
    ```bash
-   git clone https://github.com/yourusername/receipt-lens.git
+   git clone https://github.com/amalonso/receipt-lens.git
    cd receipt-lens
    ```
 
-2. **Create environment file**
+2. **Configurar variables de entorno**
    ```bash
    cp .env.example .env
    ```
 
-3. **Configure environment variables**
-
-   Edit `.env` and set the following required variables:
-
+3. **Editar .env con tus credenciales**
    ```bash
-   # REQUIRED: Set a strong password for PostgreSQL
-   POSTGRES_PASSWORD=your_strong_password_here
+   # REQUERIDO: Contraseña segura para PostgreSQL
+   POSTGRES_PASSWORD=tu_contraseña_segura
 
-   # REQUIRED: Add your Anthropic API key
-   ANTHROPIC_API_KEY=sk-ant-...
+   # REQUERIDO: Tu API key de Anthropic
+   ANTHROPIC_API_KEY=sk-ant-api-key-aqui
 
-   # REQUIRED: Generate a secret key for JWT
-   # Run: openssl rand -hex 32
-   JWT_SECRET_KEY=your_generated_secret_key_here
+   # REQUERIDO: Secret key para JWT (generar con: openssl rand -hex 32)
+   JWT_SECRET_KEY=tu_secret_key_generada
    ```
 
-4. **Start the application**
+4. **Iniciar servicios con Docker**
    ```bash
    docker-compose up -d
    ```
 
-5. **Verify installation**
+5. **Verificar que todo funciona**
+   ```bash
+   # Health check
+   curl http://localhost:8000/api/health
 
-   Open your browser and navigate to:
-   - Application: http://localhost:8000
-   - API Docs: http://localhost:8000/api/docs
-   - Health Check: http://localhost:8000/api/health
+   # Documentación API
+   open http://localhost:8000/api/docs
+   ```
 
-### First Time Setup
+### Primera Configuración
 
-The database will be automatically initialized with:
-- Schema creation (users, receipts, categories, items)
-- Pre-populated product categories
-- Indexes for performance optimization
+**Opción 1: Script de inicialización (recomendado)**
+```bash
+docker-compose exec backend python scripts/init_db.py
+```
+Esto te guiará interactivamente para crear un usuario admin.
 
-## 📖 Usage
-
-### Basic Workflow
-
-1. **Register/Login**: Create an account or log in
-2. **Upload Receipt**: Drag and drop or select a receipt image
-3. **AI Processing**: Claude analyzes the receipt and extracts data
-4. **View Dashboard**: See your spending analytics and insights
-5. **Compare Stores**: Identify which stores offer better prices
-
-### API Endpoints
-
-#### Authentication
-```http
-POST /api/auth/register    # Create new user account
-POST /api/auth/login       # Login and get JWT token
-GET  /api/auth/me          # Get current user info
+**Opción 2: Usar la API directamente**
+```bash
+# Registrar usuario
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "admin",
+    "email": "admin@example.com",
+    "password": "AdminPass123"
+  }'
 ```
 
-#### Receipts
-```http
-POST   /api/receipts/upload     # Upload new receipt
-GET    /api/receipts            # List all receipts (paginated)
-GET    /api/receipts/{id}       # Get receipt details
-DELETE /api/receipts/{id}       # Delete receipt
+## 📖 Uso de la API
+
+### Autenticación
+
+```bash
+# 1. Registrar usuario
+curl -X POST http://localhost:8000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "usuario",
+    "email": "usuario@example.com",
+    "password": "Password123"
+  }'
+
+# 2. Login (obtener token)
+curl -X POST http://localhost:8000/api/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{
+    "username": "usuario",
+    "password": "Password123"
+  }'
+
+# Respuesta:
+# {
+#   "success": true,
+#   "data": {
+#     "user": { "id": 1, "username": "usuario", ... },
+#     "token": {
+#       "access_token": "eyJ0eXAiOiJKV1QiLCJh...",
+#       "token_type": "bearer",
+#       "expires_in": 86400
+#     }
+#   }
+# }
+
+# 3. Obtener usuario actual
+curl http://localhost:8000/api/auth/me \
+  -H "Authorization: Bearer <tu_token>"
 ```
 
-#### Analytics
-```http
-GET /api/analytics/monthly-summary       # Monthly spending breakdown
-GET /api/analytics/store-comparison      # Compare stores by price
-GET /api/analytics/price-evolution       # Track product prices over time
+### Subir y Analizar Facturas
+
+```bash
+# Subir factura (máx 10MB, formatos: jpg, png, pdf)
+curl -X POST http://localhost:8000/api/receipts/upload \
+  -H "Authorization: Bearer <tu_token>" \
+  -F "file=@/ruta/a/factura.jpg"
+
+# Respuesta:
+# {
+#   "success": true,
+#   "data": {
+#     "receipt": {
+#       "id": 1,
+#       "store_name": "Mercadona",
+#       "purchase_date": "2025-11-08",
+#       "total_amount": 45.67,
+#       "processed": true,
+#       ...
+#     },
+#     "message": "Receipt uploaded and analyzed successfully. 12 items extracted."
+#   }
+# }
+
+# Listar facturas (paginado)
+curl "http://localhost:8000/api/receipts?page=1&page_size=20" \
+  -H "Authorization: Bearer <tu_token>"
+
+# Ver detalle de factura con items
+curl http://localhost:8000/api/receipts/1 \
+  -H "Authorization: Bearer <tu_token>"
+
+# Eliminar factura
+curl -X DELETE http://localhost:8000/api/receipts/1 \
+  -H "Authorization: Bearer <tu_token>"
 ```
 
-For detailed API documentation, visit `/api/docs` when running in development mode.
+### Analytics
 
-## 🏗️ Architecture
+```bash
+# Resumen mensual
+curl "http://localhost:8000/api/analytics/monthly-summary?month=11&year=2025" \
+  -H "Authorization: Bearer <tu_token>"
 
+# Respuesta incluye:
+# - Total gastado, número de facturas y items
+# - Desglose por categoría con porcentajes
+# - Top 10 productos más comprados
+# - Promedio por factura
+# - Lista de tiendas visitadas
+
+# Comparar supermercados (últimos 6 meses)
+curl "http://localhost:8000/api/analytics/store-comparison?months=6" \
+  -H "Authorization: Bearer <tu_token>"
+
+# Respuesta incluye por cada tienda:
+# - Índice de precios (100 = promedio, >100 = más caro, <100 = más barato)
+# - Mejores ofertas (productos más baratos que el promedio)
+# - Peores ofertas (productos más caros que el promedio)
+# - Total gastado y visitas
+
+# Evolución de precios de un producto
+curl "http://localhost:8000/api/analytics/price-evolution?product=leche&months=6" \
+  -H "Authorization: Bearer <tu_token>"
+
+# Respuesta incluye:
+# - Historial de precios por tienda
+# - Precio mín, máx y promedio por tienda
+# - Tendencia (increasing/decreasing/stable)
+# - Mejor y peor tienda para ese producto
 ```
-┌─────────────┐      ┌──────────────┐      ┌─────────────┐
-│   Browser   │─────▶│   FastAPI    │─────▶│ PostgreSQL  │
-│  (Frontend) │      │   Backend    │      │  Database   │
-└─────────────┘      └──────┬───────┘      └─────────────┘
-                            │
-                            ▼
-                     ┌──────────────┐
-                     │  Claude API  │
-                     │  (Analysis)  │
-                     └──────────────┘
+
+## 🗄️ Modelo de Datos
+
+### Tablas Principales
+
+```sql
+-- Usuarios
+users (id, username, email, password_hash, created_at)
+
+-- Categorías (8 predefinidas)
+categories (id, name)
+  - bebidas, carne, verduras, lácteos
+  - panadería, limpieza, ocio, otros
+
+-- Facturas
+receipts (
+  id, user_id, store_name, purchase_date,
+  total_amount, image_path, image_hash,
+  processed, created_at
+)
+
+-- Items de facturas
+items (
+  id, receipt_id, category_id, product_name,
+  quantity, unit_price, total_price, created_at
+)
 ```
 
-### Data Flow
+### Índices Optimizados
 
-1. User uploads receipt image via frontend
-2. Backend validates file (size, format, duplicates)
-3. Image sent to Claude API with specialized prompt
-4. Claude extracts structured data (products, prices, categories)
-5. Data stored in PostgreSQL with transaction safety
-6. Analytics queries aggregate data for insights
+- `idx_receipts_user_date` - Búsquedas por usuario y fecha
+- `idx_receipts_store` - Filtrado por tienda
+- `idx_receipts_image_hash` - Detección de duplicados
+- `idx_items_receipt` - JOIN receipt-items
+- `idx_items_category` - Agregaciones por categoría
+- `idx_items_product` - Búsqueda de productos
 
 ## 🧪 Testing
 
-### Run all tests
+### Ejecutar Tests
+
 ```bash
+# Todos los tests
 docker-compose exec backend pytest
+
+# Solo tests de autenticación
+docker-compose exec backend pytest tests/test_auth.py -v
+
+# Con coverage
+docker-compose exec backend pytest --cov=backend --cov-report=html
+
+# Ver reporte de coverage
+open htmlcov/index.html
 ```
 
-### Run specific test categories
+### Estado Actual de Tests
+
+- **Autenticación**: 24/28 tests passing (85.7%)
+  - ✅ Registro exitoso
+  - ✅ Login con username y email
+  - ✅ JWT tokens válidos/inválidos
+  - ✅ Detección de duplicados
+  - ✅ Validación de passwords
+  - ✅ Hashing seguro (bcrypt)
+  - ⚠️ 4 tests con warnings de Pydantic v1/v2 syntax
+
+## 📊 API Reference
+
+### Endpoints Disponibles
+
+#### Health & Info
+- `GET /` - Información de la API
+- `GET /api/health` - Health check
+- `GET /api/docs` - Swagger UI (solo desarrollo)
+- `GET /api/redoc` - ReDoc (solo desarrollo)
+
+#### Authentication (`/api/auth`)
+- `POST /register` - Registrar usuario
+- `POST /login` - Login y obtener JWT
+- `GET /me` - Obtener usuario actual
+
+#### Receipts (`/api/receipts`)
+- `POST /upload` - Subir y analizar factura
+- `GET /` - Listar facturas (paginado)
+- `GET /{id}` - Detalle de factura
+- `DELETE /{id}` - Eliminar factura
+
+#### Analytics (`/api/analytics`)
+- `GET /monthly-summary` - Resumen mensual
+- `GET /store-comparison` - Comparar tiendas
+- `GET /price-evolution` - Evolución de precios
+
+### Formato de Respuesta Estándar
+
+```json
+{
+  "success": true,
+  "data": { ... },
+  "error": null
+}
+```
+
+En caso de error:
+```json
+{
+  "success": false,
+  "data": null,
+  "error": "Mensaje de error descriptivo"
+}
+```
+
+## 🔧 Configuración Avanzada
+
+### Variables de Entorno
+
 ```bash
-# Authentication tests
-pytest -m auth
+# Base de datos
+DATABASE_URL=postgresql://user:pass@host:port/db
+POSTGRES_DB=receipt_lens
+POSTGRES_USER=admin
+POSTGRES_PASSWORD=contraseña_segura
 
-# Receipt processing tests
-pytest -m receipts
+# API Keys
+ANTHROPIC_API_KEY=sk-ant-...
 
-# Analytics tests
-pytest -m analytics
+# Seguridad
+JWT_SECRET_KEY=secret_key_generada
+JWT_ALGORITHM=HS256
+JWT_EXPIRATION_HOURS=24
 
-# Integration tests
-pytest -m integration
+# Aplicación
+ENVIRONMENT=development|production
+DEBUG=true|false
+LOG_LEVEL=DEBUG|INFO|WARNING|ERROR
+
+# Upload
+MAX_UPLOAD_SIZE_MB=10
+UPLOAD_DIR=/app/uploads
+ALLOWED_EXTENSIONS=jpg,jpeg,png,pdf
+UPLOAD_RATE_LIMIT_PER_HOUR=10
+
+# CORS
+CORS_ORIGINS=http://localhost:8000,http://localhost:3000
 ```
 
-### Check code coverage
-```bash
-pytest --cov=backend --cov-report=html
-# Open htmlcov/index.html in browser
+### Docker Compose Personalizado
+
+Para producción, crea `docker-compose.override.yml`:
+
+```yaml
+version: '3.8'
+
+services:
+  backend:
+    restart: always
+    environment:
+      - ENVIRONMENT=production
+      - DEBUG=false
+
+  db:
+    volumes:
+      - ./backups:/backups
 ```
 
-## 🔒 Security Features
+## 📈 Roadmap
 
-- **Password Hashing**: bcrypt with automatic salt generation
-- **JWT Tokens**: 24-hour expiration by default
-- **Input Validation**: Pydantic schemas for all requests
-- **Rate Limiting**: Max 10 uploads per hour per user
-- **File Validation**: Size limits, extension whitelist, hash-based duplicate detection
-- **SQL Injection Protection**: SQLAlchemy ORM with parameterized queries
-- **CORS**: Configurable allowed origins
+### ✅ Fase 1 - MVP (Completado)
+- [x] Setup Docker + PostgreSQL
+- [x] Autenticación completa con JWT
+- [x] Upload de imágenes + Claude AI
+- [x] Almacenamiento transaccional
+- [x] Tests de autenticación
 
-## ⚙️ Configuration
+### ✅ Fase 2 - Analytics (Completado)
+- [x] Resúmenes mensuales
+- [x] Comparativas de supermercados
+- [x] Evolución de precios
+- [x] Detección de tendencias
 
-All settings are managed via environment variables in `.env`:
+### 🔄 Fase 3 - Frontend (En progreso)
+- [ ] Login/Register UI
+- [ ] Upload con drag & drop
+- [ ] Dashboard con Chart.js
+- [ ] Lista y detalle de facturas
+- [ ] Visualizaciones de analytics
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `POSTGRES_PASSWORD` | PostgreSQL password | (required) |
-| `ANTHROPIC_API_KEY` | Claude API key | (required) |
-| `JWT_SECRET_KEY` | JWT signing key | (required) |
-| `JWT_EXPIRATION_HOURS` | Token lifetime | 24 |
-| `MAX_UPLOAD_SIZE_MB` | Max file size | 10 |
-| `UPLOAD_RATE_LIMIT_PER_HOUR` | Upload limit | 10 |
-| `ENVIRONMENT` | dev/production | development |
-| `DEBUG` | Enable debug mode | true |
-| `LOG_LEVEL` | Logging verbosity | INFO |
-
-## 🗺️ Roadmap
-
-### Phase 1 (MVP) ✅
-- [x] Docker setup with PostgreSQL
-- [x] Health check endpoint
-- [ ] User authentication (JWT)
-- [ ] Receipt upload and Claude integration
-- [ ] Basic frontend (login, upload, list)
-
-### Phase 2 (Analytics)
-- [ ] Monthly spending analytics
-- [ ] Store comparison
-- [ ] Price evolution tracking
-- [ ] Interactive dashboard with charts
-
-### Phase 3 (Refinement)
-- [ ] Advanced error handling
+### 📅 Futuras Mejoras
+- [ ] Tests de receipts y analytics
 - [ ] Rate limiting implementation
+- [ ] Background jobs para Claude (Celery)
+- [ ] Cache de analytics (Redis)
+- [ ] Export a PDF/CSV
 - [ ] Email notifications
-- [ ] Export data (CSV, PDF reports)
-- [ ] Mobile-responsive improvements
-
-### Future Features
-- [ ] OCR fallback for receipts without Claude
-- [ ] Receipt tagging system
-- [ ] Budget alerts and goals
-- [ ] Multi-user household support
-- [ ] Shopping list recommendations
-- [ ] API for third-party integrations
-
-## 🤝 Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-### Development Setup
-
-```bash
-# Install development dependencies
-pip install -r requirements.txt
-
-# Run pre-commit checks
-black backend/ --check
-ruff check backend/
-
-# Run tests with coverage
-pytest --cov=backend
-```
-
-## 📝 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
-## 🙏 Acknowledgments
-
-- [Anthropic](https://www.anthropic.com/) for the Claude API
-- [FastAPI](https://fastapi.tiangolo.com/) for the excellent web framework
-- [PostgreSQL](https://www.postgresql.org/) for reliable data storage
-- [Chart.js](https://www.chartjs.org/) for beautiful visualizations
-
-## 📧 Support
-
-For issues, questions, or suggestions:
-- Open an issue on GitHub
-- Check existing documentation at `/api/docs`
-- Review the troubleshooting section below
+- [ ] Budget goals y alerts
+- [ ] Mobile app (React Native)
+- [ ] Shared receipts entre usuarios
+- [ ] Predicción de gastos (ML)
 
 ## 🐛 Troubleshooting
 
-### Database Connection Issues
-```bash
-# Check if PostgreSQL is running
-docker-compose ps
+### La base de datos no inicia
 
-# View database logs
+```bash
+# Verificar logs
 docker-compose logs db
 
-# Restart database
+# Reiniciar servicio
 docker-compose restart db
+
+# Recrear volumen (⚠️ elimina datos)
+docker-compose down -v
+docker-compose up -d
 ```
 
-### Claude API Errors
-- Verify your API key is correct in `.env`
-- Check API quota at https://console.anthropic.com/
-- Review logs: `docker-compose logs backend`
+### Claude API devuelve errores
 
-### Upload Failures
-- Ensure file is < 10MB
-- Supported formats: JPG, PNG, PDF
-- Check uploads directory permissions
+- Verificar API key en `.env`
+- Verificar quota en https://console.anthropic.com/
+- Revisar logs: `docker-compose logs backend | grep claude`
+
+### Upload de archivos falla
+
+- Verificar tamaño < 10MB
+- Formatos soportados: jpg, jpeg, png, pdf
+- Verificar permisos del directorio `uploads/`
+- Revisar logs: `docker-compose logs backend | grep upload`
+
+### Tests fallan
+
+```bash
+# Limpiar cache de pytest
+docker-compose exec backend pytest --cache-clear
+
+# Reinstalar dependencias
+docker-compose exec backend pip install -r requirements.txt --force-reinstall
+
+# Verificar variables de entorno
+docker-compose exec backend python -c "from backend.config import settings; print(settings.dict())"
+```
+
+## 🤝 Contribuir
+
+Las contribuciones son bienvenidas! Por favor:
+
+1. Fork el repositorio
+2. Crea una rama para tu feature (`git checkout -b feature/amazing-feature`)
+3. Commit tus cambios (`git commit -m 'Add amazing feature'`)
+4. Push a la rama (`git push origin feature/amazing-feature`)
+5. Abre un Pull Request
+
+### Guías de Contribución
+
+- Seguir PEP 8 para Python
+- Añadir tests para nuevas features
+- Actualizar documentación
+- Usar type hints
+- Mantener coverage > 70%
+
+## 📄 Licencia
+
+Este proyecto está bajo la Licencia MIT - ver el archivo [LICENSE](LICENSE) para detalles.
+
+## 🙏 Agradecimientos
+
+- [Anthropic](https://www.anthropic.com/) por Claude AI
+- [FastAPI](https://fastapi.tiangolo.com/) por el framework
+- [PostgreSQL](https://www.postgresql.org/) por la base de datos
+- [SQLAlchemy](https://www.sqlalchemy.org/) por el ORM
+
+## 📧 Contacto
+
+- **Autor**: amalonso
+- **Repositorio**: [github.com/amalonso/receipt-lens](https://github.com/amalonso/receipt-lens)
+- **Issues**: [github.com/amalonso/receipt-lens/issues](https://github.com/amalonso/receipt-lens/issues)
 
 ---
 
-**Made with ❤️ for smarter shopping**
+**Receipt Lens** - Análisis inteligente de facturas con IA 🧾🔍

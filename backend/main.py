@@ -36,6 +36,10 @@ async def lifespan(app: FastAPI):
     logger.info("Starting Receipt Lens application...")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Vision Provider: {settings.vision_provider}")
+
+    # Validate vision provider configuration
+    _validate_vision_config()
 
     # Initialize database (only in development)
     if settings.environment == "development":
@@ -50,6 +54,65 @@ async def lifespan(app: FastAPI):
     # Shutdown
     logger.info("Shutting down Receipt Lens application...")
     engine.dispose()
+
+
+def _validate_vision_config():
+    """Validate vision provider configuration on startup."""
+    provider = settings.vision_provider.lower()
+    logger.info(f"Validating vision provider configuration for: {provider}")
+
+    if provider == "google_vision":
+        credentials_path = settings.google_vision_credentials
+        if not credentials_path:
+            logger.error(
+                "Google Vision selected but GOOGLE_VISION_CREDENTIALS not set in .env file"
+            )
+            logger.warning(
+                "Receipt uploads will fail. Please set GOOGLE_VISION_CREDENTIALS "
+                "to the path of your Google Cloud credentials JSON file."
+            )
+        elif not os.path.exists(credentials_path):
+            logger.error(
+                f"Google Vision credentials file not found at: {credentials_path}"
+            )
+            logger.warning(
+                f"Receipt uploads will fail. Please ensure the credentials file exists "
+                f"and is mounted correctly in Docker. Check docker-compose.yml volumes."
+            )
+        elif not os.access(credentials_path, os.R_OK):
+            logger.error(
+                f"Google Vision credentials file is not readable: {credentials_path}"
+            )
+            logger.warning("Receipt uploads will fail. Please check file permissions.")
+        else:
+            logger.info(f"Google Vision credentials found at: {credentials_path}")
+
+    elif provider == "claude":
+        if not settings.anthropic_api_key:
+            logger.warning(
+                "Claude (Anthropic) selected but ANTHROPIC_API_KEY not set. "
+                "Will attempt to use PaddleOCR fallback if available."
+            )
+        else:
+            logger.info("Anthropic API key configured")
+
+    elif provider == "openai":
+        if not settings.openai_api_key:
+            logger.error("OpenAI selected but OPENAI_API_KEY not set in .env file")
+            logger.warning("Receipt uploads will fail. Please set OPENAI_API_KEY.")
+        else:
+            logger.info("OpenAI API key configured")
+
+    elif provider == "ocrspace":
+        if not settings.ocrspace_api_key or settings.ocrspace_api_key == "helloworld":
+            logger.warning(
+                "OCR.space is using default 'helloworld' API key. "
+                "This may have rate limits. Consider getting your own key."
+            )
+        else:
+            logger.info("OCR.space API key configured")
+
+    logger.info("Vision provider validation complete")
 
 
 # Create FastAPI application

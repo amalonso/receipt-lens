@@ -40,6 +40,12 @@ ENV/
 .env
 .env.local
 
+# Credentials (Google Vision, etc.)
+credentials/
+*.json
+!package.json
+!tsconfig.json
+
 # Database
 *.db
 *.sqlite

@@ -231,13 +231,18 @@ class ReceiptService:
 
             # Analyze with configured vision provider
             logger.info(f"Starting analysis with provider: {settings.vision_provider}...")
+            logger.debug(f"Image saved at: {file_path}")
             try:
                 analyzer = get_analyzer()
+                logger.debug(f"Analyzer created: {analyzer.__class__.__name__}")
                 analysis = await analyzer.analyze_receipt(file_path)
+                logger.debug(f"Analysis completed, validating...")
                 # Validate analysis
                 analyzer.validate_analysis(analysis)
+                logger.info(f"Analysis validation successful")
             except VisionAnalyzerError as vision_error:
                 # If vision API fails and PaddleOCR is available, fallback
+                logger.error(f"Vision API error: {str(vision_error)}", exc_info=True)
                 if is_paddleocr_available():
                     logger.warning(f"Vision API analysis failed, falling back to PaddleOCR: {str(vision_error)}")
                     logger.info("Starting PaddleOCR analysis (local fallback)...")
@@ -245,9 +250,17 @@ class ReceiptService:
                     analysis = await paddleocr_analyzer.analyze_receipt(file_path)
                 else:
                     # No fallback available
+                    logger.error(
+                        f"Vision provider '{settings.vision_provider}' failed and PaddleOCR fallback not available. "
+                        f"Error: {str(vision_error)}"
+                    )
                     raise HTTPException(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail=f"Vision analysis failed and no fallback available: {str(vision_error)}"
+                        detail=(
+                            f"Receipt analysis service unavailable. "
+                            f"Vision provider '{settings.vision_provider}' failed: {str(vision_error)}. "
+                            f"Please check your vision provider configuration in .env file."
+                        )
                     )
 
             # Parse date

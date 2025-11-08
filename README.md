@@ -585,18 +585,58 @@ services:
 
 ## 🐛 Troubleshooting
 
+> **📖 Guía Completa**: Para soluciones detalladas y paso a paso, consulta [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md)
+
+### ⚠️ Error 503 al Subir Imágenes (Más Común)
+
+Este es el error más frecuente y ocurre cuando las credenciales del proveedor de Vision no están configuradas correctamente.
+
+**Solución Rápida para Google Vision:**
+
+1. Coloca tu archivo de credenciales JSON en la carpeta del proyecto:
+   ```bash
+   mkdir -p credentials
+   cp /ruta/a/google-credentials.json credentials/
+   ```
+
+2. Actualiza tu `.env`:
+   ```bash
+   GOOGLE_VISION_CREDENTIALS=/app/credentials/google-credentials.json
+   ```
+
+3. Agrega el volumen en `docker-compose.yml`:
+   ```yaml
+   backend:
+     volumes:
+       - ./credentials:/app/credentials  # Agrega esta línea
+   ```
+
+4. Reinicia:
+   ```bash
+   docker compose restart backend
+   ```
+
+**Alternativa - Usar Claude:**
+```bash
+# En .env
+VISION_PROVIDER=claude
+ANTHROPIC_API_KEY=sk-ant-tu-key-aqui
+```
+
+👉 **Ver [docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md) para más detalles y otros errores comunes**
+
 ### La base de datos no inicia
 
 ```bash
 # Verificar logs
-docker-compose logs db
+docker compose logs db
 
 # Reiniciar servicio
-docker-compose restart db
+docker compose restart db
 
 # Recrear volumen (⚠️ elimina datos)
-docker-compose down -v
-docker-compose up -d
+docker compose down -v
+docker compose up -d
 ```
 
 ### Vision API devuelve errores
@@ -606,7 +646,7 @@ docker-compose up -d
 - Para Claude: verificar quota en https://console.anthropic.com/
 - Para Google Vision: verificar credenciales y proyecto
 - Para OCR.space: verificar límites de rate (500/día gratis)
-- Revisar logs: `docker-compose logs backend | grep vision`
+- Revisar logs: `docker compose logs backend | grep -E "(Vision|ERROR)"`
 - Ver [VISION_PROVIDERS.md](VISION_PROVIDERS.md) para troubleshooting específico
 
 ### Upload de archivos falla
@@ -614,7 +654,7 @@ docker-compose up -d
 - Verificar tamaño < 10MB
 - Formatos soportados: jpg, jpeg, png, pdf
 - Verificar permisos del directorio `uploads/`
-- Revisar logs: `docker-compose logs backend | grep upload`
+- Revisar logs: `docker compose logs backend | grep upload`
 
 ### Tests fallan
 

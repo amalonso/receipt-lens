@@ -240,10 +240,10 @@ class ReceiptService:
                     analysis = await analyzer.analyze_receipt(file_path)
                     # Validate analysis
                     analyzer.validate_analysis(analysis)
-                except ClaudeAnalyzerError as claude_error:
-                    # If Claude fails and PaddleOCR is available, fallback
+                except VisionAnalyzerError as vision_error:
+                    # If vision API fails and PaddleOCR is available, fallback
                     if is_paddleocr_available():
-                        logger.warning(f"Claude analysis failed, falling back to PaddleOCR: {str(claude_error)}")
+                        logger.warning(f"Vision API analysis failed, falling back to PaddleOCR: {str(vision_error)}")
                         use_claude = False
                     else:
                         raise

@@ -229,36 +229,26 @@ class ReceiptService:
                     detail=f"This receipt has already been uploaded (Receipt ID: {existing.id})"
                 )
 
-            # Determine which analyzer to use
-            use_claude = settings.anthropic_api_key is not None
-
-            if use_claude:
-                # Analyze with Claude
-                logger.info("Starting Claude AI analysis...")
-                try:
-                    analyzer = get_analyzer()
-                    analysis = await analyzer.analyze_receipt(file_path)
-                    # Validate analysis
-                    analyzer.validate_analysis(analysis)
-                except VisionAnalyzerError as vision_error:
-                    # If vision API fails and PaddleOCR is available, fallback
-                    if is_paddleocr_available():
-                        logger.warning(f"Vision API analysis failed, falling back to PaddleOCR: {str(vision_error)}")
-                        use_claude = False
-                    else:
-                        raise
-
-            if not use_claude:
-                # Use PaddleOCR fallback
-                if not is_paddleocr_available():
+            # Analyze with configured vision provider
+            logger.info(f"Starting analysis with provider: {settings.vision_provider}...")
+            try:
+                analyzer = get_analyzer()
+                analysis = await analyzer.analyze_receipt(file_path)
+                # Validate analysis
+                analyzer.validate_analysis(analysis)
+            except VisionAnalyzerError as vision_error:
+                # If vision API fails and PaddleOCR is available, fallback
+                if is_paddleocr_available():
+                    logger.warning(f"Vision API analysis failed, falling back to PaddleOCR: {str(vision_error)}")
+                    logger.info("Starting PaddleOCR analysis (local fallback)...")
+                    paddleocr_analyzer = get_paddleocr_analyzer()
+                    analysis = await paddleocr_analyzer.analyze_receipt(file_path)
+                else:
+                    # No fallback available
                     raise HTTPException(
                         status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-                        detail="No analysis service available. Please configure ANTHROPIC_API_KEY or install PaddleOCR."
+                        detail=f"Vision analysis failed and no fallback available: {str(vision_error)}"
                     )
-
-                logger.info("Starting PaddleOCR analysis (local fallback)...")
-                paddleocr_analyzer = get_paddleocr_analyzer()
-                analysis = await paddleocr_analyzer.analyze_receipt(file_path)
 
             # Parse date
             try:

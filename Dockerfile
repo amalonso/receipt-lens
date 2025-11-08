@@ -4,7 +4,7 @@ FROM python:3.11-slim
 # Set working directory
 WORKDIR /app
 
-# Install system dependencies for Pillow and PostgreSQL
+# Install system dependencies for Pillow, PostgreSQL, and PaddleOCR
 RUN apt-get update && apt-get install -y \
     gcc \
     g++ \
@@ -12,6 +12,13 @@ RUN apt-get update && apt-get install -y \
     zlib1g-dev \
     libpng-dev \
     libpq-dev \
+    libglib2.0-0 \
+    libsm6 \
+    libxext6 \
+    libxrender-dev \
+    libgomp1 \
+    libgl1-mesa-glx \
+    libglib2.0-dev \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements file

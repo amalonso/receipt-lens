@@ -3,8 +3,8 @@ Pydantic schemas for analytics request/response validation.
 """
 
 from typing import List, Optional
+from datetime import date as DateType
 from pydantic import BaseModel, Field
-from datetime import date
 
 
 class CategorySpending(BaseModel):
@@ -83,7 +83,7 @@ class StoreComparisonResponse(BaseModel):
 class PricePoint(BaseModel):
     """Schema for a single price point."""
 
-    date: date = Field(..., description="Purchase date")
+    date: DateType = Field(..., description="Purchase date")
     price: float = Field(..., description="Price at this date")
     store: str = Field(..., description="Store name")
     receipt_id: int = Field(..., description="Receipt ID")

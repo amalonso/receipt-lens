@@ -125,6 +125,105 @@
             font-size: 0.875rem;
             opacity: 0.9;
         }
+
+        .mode-switch {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1.5rem;
+            padding: 0.5rem;
+            background-color: var(--bg-secondary);
+            border-radius: var(--border-radius);
+        }
+
+        .mode-switch-btn {
+            flex: 1;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: transparent;
+            color: var(--text-secondary);
+            border-radius: calc(var(--border-radius) - 4px);
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+
+        .mode-switch-btn.active {
+            background: var(--primary-color);
+            color: white;
+        }
+
+        .multiple-preview-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+
+        .preview-item {
+            position: relative;
+            border: 2px solid var(--border-color);
+            border-radius: var(--border-radius);
+            overflow: hidden;
+            aspect-ratio: 1;
+        }
+
+        .preview-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+
+        .preview-item-remove {
+            position: absolute;
+            top: 0.5rem;
+            right: 0.5rem;
+            background: rgba(220, 38, 38, 0.9);
+            color: white;
+            border: none;
+            border-radius: 50%;
+            width: 28px;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .preview-item-number {
+            position: absolute;
+            bottom: 0.5rem;
+            left: 0.5rem;
+            background: rgba(0, 0, 0, 0.7);
+            color: white;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .add-more-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border: 2px dashed var(--border-color);
+            border-radius: var(--border-radius);
+            aspect-ratio: 1;
+            cursor: pointer;
+            background: var(--bg-secondary);
+            transition: all 0.2s ease;
+        }
+
+        .add-more-btn:hover {
+            border-color: var(--primary-color);
+            background: var(--bg-tertiary);
+        }
+
+        .add-more-btn span {
+            font-size: 2rem;
+            color: var(--text-secondary);
+        }
     </style>
 </head>
 <body>
@@ -193,16 +292,26 @@
                             <p class="card-subtitle">Sube una foto de tu ticket y Claude AI extraerá automáticamente todos los datos</p>
                         </div>
                         <div class="card-body">
-                            <!-- Dropzone -->
+                            <!-- Mode Switch -->
+                            <div class="mode-switch">
+                                <button type="button" class="mode-switch-btn active" id="single-mode-btn" onclick="switchMode('single')">
+                                    📄 Una imagen
+                                </button>
+                                <button type="button" class="mode-switch-btn" id="multiple-mode-btn" onclick="switchMode('multiple')">
+                                    📚 Múltiples imágenes (ticket largo)
+                                </button>
+                            </div>
+
+                            <!-- Dropzone (Single Mode) -->
                             <div class="dropzone" id="dropzone">
                                 <div class="dropzone-icon">📤</div>
                                 <div class="dropzone-text">
-                                    <p style="font-size: 1rem; margin-bottom: 0.5rem;"><strong>Arrastra tu factura aquí</strong></p>
+                                    <p style="font-size: 1rem; margin-bottom: 0.5rem;"><strong id="dropzone-title">Arrastra tu factura aquí</strong></p>
                                     <p style="margin-bottom: 0.5rem;">o</p>
                                     <button type="button" class="btn btn-primary" onclick="document.getElementById('file-input').click()">
-                                        Seleccionar Archivo
+                                        Seleccionar Archivo<span id="file-btn-suffix"></span>
                                     </button>
-                                    <p style="margin-top: 1rem; font-size: 0.75rem;">Formatos soportados: JPG, PNG, PDF (máx. 10MB)</p>
+                                    <p style="margin-top: 1rem; font-size: 0.75rem;" id="dropzone-info">Formatos soportados: JPG, PNG, PDF (máx. 10MB)</p>
                                 </div>
                             </div>
 
@@ -228,6 +337,25 @@
 
                                 <button class="btn btn-primary btn-lg btn-block mt-4" id="upload-btn" onclick="uploadFile()">
                                     🚀 Analizar Factura
+                                </button>
+                            </div>
+
+                            <!-- Multiple Images Preview Container -->
+                            <div class="preview-container" id="multiple-preview-container" style="display: none;">
+                                <h4>Imágenes seleccionadas (<span id="image-count">0</span>)</h4>
+                                <p style="font-size: 0.875rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                                    Las imágenes se unirán en el orden mostrado. Puedes subir hasta 10 imágenes.
+                                </p>
+                                <div class="multiple-preview-grid" id="multiple-preview-grid">
+                                    <!-- Preview items will be added here -->
+                                </div>
+
+                                <div class="progress-bar" id="progress-bar-multiple" style="display: none; margin-top: 1rem;">
+                                    <div class="progress-fill" id="progress-fill-multiple"></div>
+                                </div>
+
+                                <button class="btn btn-primary btn-lg btn-block mt-4" id="upload-btn-multiple" onclick="uploadMultipleFiles()">
+                                    🚀 Unir y Analizar Factura
                                 </button>
                             </div>
 
@@ -306,6 +434,8 @@
         requireAuth();
 
         let selectedFile = null;
+        let selectedFiles = []; // For multiple mode
+        let uploadMode = 'single'; // 'single' or 'multiple'
 
         // Load user info
         async function loadUserInfo() {
@@ -343,15 +473,21 @@
             dropzone.classList.remove('drag-over');
 
             const files = e.dataTransfer.files;
-            if (files.length > 0) {
+            if (uploadMode === 'single' && files.length > 0) {
                 handleFileSelect(files[0]);
+            } else if (uploadMode === 'multiple' && files.length > 0) {
+                handleMultipleFileSelect(Array.from(files));
             }
         });
 
         // File input handler
         document.getElementById('file-input').addEventListener('change', (e) => {
             if (e.target.files.length > 0) {
-                handleFileSelect(e.target.files[0]);
+                if (uploadMode === 'single') {
+                    handleFileSelect(e.target.files[0]);
+                } else {
+                    handleMultipleFileSelect(Array.from(e.target.files));
+                }
             }
         });
 
@@ -394,6 +530,185 @@
             document.getElementById('preview-container').classList.remove('active');
             document.getElementById('file-input').value = '';
             document.getElementById('analysis-result').classList.remove('active');
+        }
+
+        // Mode switching
+        function switchMode(mode) {
+            uploadMode = mode;
+
+            // Update button states
+            document.getElementById('single-mode-btn').classList.toggle('active', mode === 'single');
+            document.getElementById('multiple-mode-btn').classList.toggle('active', mode === 'multiple');
+
+            // Update dropzone text
+            const fileInput = document.getElementById('file-input');
+            if (mode === 'single') {
+                document.getElementById('dropzone-title').textContent = 'Arrastra tu factura aquí';
+                document.getElementById('file-btn-suffix').textContent = '';
+                document.getElementById('dropzone-info').textContent = 'Formatos soportados: JPG, PNG, PDF (máx. 10MB)';
+                fileInput.removeAttribute('multiple');
+                fileInput.accept = 'image/jpeg,image/png,application/pdf';
+            } else {
+                document.getElementById('dropzone-title').textContent = 'Arrastra tus imágenes aquí';
+                document.getElementById('file-btn-suffix').textContent = 's';
+                document.getElementById('dropzone-info').textContent = 'Selecciona múltiples fotos del mismo recibo (JPG, PNG - máx. 10 imágenes)';
+                fileInput.setAttribute('multiple', 'multiple');
+                fileInput.accept = 'image/jpeg,image/png';
+            }
+
+            // Clear current selections
+            clearFile();
+            clearMultipleFiles();
+        }
+
+        // Multiple files handling
+        function handleMultipleFileSelect(files) {
+            const allowedTypes = ['image/jpeg', 'image/png'];
+            const maxFiles = 10;
+
+            // Filter valid files
+            const validFiles = files.filter(file => {
+                if (!allowedTypes.includes(file.type)) {
+                    showToast(`${file.name}: Tipo no soportado. Solo JPG y PNG`, 'error');
+                    return false;
+                }
+                const maxSize = 10 * 1024 * 1024;
+                if (file.size > maxSize) {
+                    showToast(`${file.name}: Archivo demasiado grande. Máx 10MB`, 'error');
+                    return false;
+                }
+                return true;
+            });
+
+            // Check total count
+            if (selectedFiles.length + validFiles.length > maxFiles) {
+                showToast(`Máximo ${maxFiles} imágenes permitidas`, 'error');
+                return;
+            }
+
+            // Add files to selection
+            selectedFiles.push(...validFiles);
+            updateMultiplePreview();
+        }
+
+        function updateMultiplePreview() {
+            const grid = document.getElementById('multiple-preview-grid');
+            grid.innerHTML = '';
+
+            selectedFiles.forEach((file, index) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const previewItem = document.createElement('div');
+                    previewItem.className = 'preview-item';
+                    previewItem.innerHTML = `
+                        <img src="${e.target.result}" alt="Preview ${index + 1}">
+                        <button class="preview-item-remove" onclick="removeFile(${index})" title="Eliminar">
+                            ✕
+                        </button>
+                        <div class="preview-item-number">${index + 1}</div>
+                    `;
+                    grid.appendChild(previewItem);
+                };
+                reader.readAsDataURL(file);
+            });
+
+            // Add "add more" button if less than 10
+            if (selectedFiles.length < 10) {
+                const addMore = document.createElement('div');
+                addMore.className = 'add-more-btn';
+                addMore.onclick = () => document.getElementById('file-input').click();
+                addMore.innerHTML = '<span>+</span>';
+                grid.appendChild(addMore);
+            }
+
+            // Update count and show container
+            document.getElementById('image-count').textContent = selectedFiles.length;
+            if (selectedFiles.length > 0) {
+                document.getElementById('multiple-preview-container').style.display = 'block';
+            } else {
+                document.getElementById('multiple-preview-container').style.display = 'none';
+            }
+        }
+
+        function removeFile(index) {
+            selectedFiles.splice(index, 1);
+            updateMultiplePreview();
+        }
+
+        function clearMultipleFiles() {
+            selectedFiles = [];
+            document.getElementById('multiple-preview-container').style.display = 'none';
+            document.getElementById('file-input').value = '';
+            document.getElementById('analysis-result').classList.remove('active');
+        }
+
+        async function uploadMultipleFiles() {
+            if (selectedFiles.length === 0) {
+                showToast('Por favor selecciona al menos una imagen', 'error');
+                return;
+            }
+
+            const uploadBtn = document.getElementById('upload-btn-multiple');
+            const progressBar = document.getElementById('progress-bar-multiple');
+            const progressFill = document.getElementById('progress-fill-multiple');
+
+            // Disable button and show progress
+            uploadBtn.disabled = true;
+            uploadBtn.innerHTML = '<div class="spinner spinner-sm"></div> Uniendo y analizando con IA...';
+            progressBar.style.display = 'block';
+
+            // Simulate progress
+            let progress = 0;
+            const progressInterval = setInterval(() => {
+                progress += Math.random() * 10;
+                if (progress > 90) progress = 90;
+                progressFill.style.width = `${progress}%`;
+            }, 300);
+
+            try {
+                const response = await window.api.uploadMultipleReceipts(selectedFiles);
+
+                // Complete progress
+                clearInterval(progressInterval);
+                progressFill.style.width = '100%';
+
+                if (response.success) {
+                    showToast(`${selectedFiles.length} imágenes procesadas exitosamente`, 'success');
+
+                    // Show result
+                    const receipt = response.data.receipt;
+                    document.getElementById('result-stats').innerHTML = `
+                        <div class="result-stat">
+                            <div class="result-stat-value">${formatCurrency(receipt.total_amount)}</div>
+                            <div class="result-stat-label">Total</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${receipt.items_count || 0}</div>
+                            <div class="result-stat-label">Items</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${receipt.store_name}</div>
+                            <div class="result-stat-label">Tienda</div>
+                        </div>
+                    `;
+
+                    document.getElementById('analysis-result').classList.add('active');
+
+                    // Hide upload UI
+                    setTimeout(() => {
+                        progressBar.style.display = 'none';
+                        uploadBtn.style.display = 'none';
+                    }, 1000);
+                } else {
+                    throw new Error(response.error || 'Error al procesar las imágenes');
+                }
+            } catch (error) {
+                clearInterval(progressInterval);
+                progressBar.style.display = 'none';
+                showToast(error.message || 'Error al analizar las imágenes', 'error');
+                uploadBtn.disabled = false;
+                uploadBtn.innerHTML = '🚀 Unir y Analizar Factura';
+            }
         }
 
         async function uploadFile() {
@@ -468,7 +783,9 @@
         function uploadAnother() {
             document.getElementById('analysis-result').classList.remove('active');
             document.getElementById('upload-btn').style.display = 'block';
+            document.getElementById('upload-btn-multiple').style.display = 'block';
             clearFile();
+            clearMultipleFiles();
         }
 
         function handleLogout() {

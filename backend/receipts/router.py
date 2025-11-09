@@ -19,6 +19,7 @@ from backend.receipts.schemas import (
     ReceiptListResponse,
     ReceiptListItem,
     ReceiptResponse,
+    ReceiptUpdateRequest,
     ItemSchema
 )
 
@@ -155,6 +156,65 @@ async def get_receipt(
     logger.info(f"GET /api/receipts/{receipt_id} - user_id: {current_user.id}")
 
     receipt = ReceiptService.get_receipt_by_id(db, receipt_id, current_user.id)
+
+    # Convert items to schema
+    items = []
+    for item in receipt.items.all():
+        items.append(ItemSchema(
+            product_name=item.product_name,
+            category=item.category.name if item.category else "otros",
+            quantity=float(item.quantity) if item.quantity else 1.0,
+            unit_price=float(item.unit_price) if item.unit_price else None,
+            total_price=float(item.total_price)
+        ))
+
+    detail = ReceiptDetailResponse(
+        id=receipt.id,
+        user_id=receipt.user_id,
+        store_name=receipt.store_name,
+        purchase_date=receipt.purchase_date,
+        total_amount=float(receipt.total_amount),
+        image_path=receipt.image_path,
+        processed=receipt.processed,
+        created_at=receipt.created_at,
+        items=items
+    )
+
+    return {
+        "success": True,
+        "data": detail.dict(),
+        "error": None
+    }
+
+
+@router.patch(
+    "/{receipt_id}",
+    response_model=ReceiptResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Update receipt",
+    description="Update a receipt's information (e.g., store name)"
+)
+async def update_receipt(
+    receipt_id: int,
+    update_data: ReceiptUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Update a receipt's information.
+
+    - **receipt_id**: Receipt ID
+    - **update_data**: Fields to update
+
+    Currently supports updating:
+    - store_name: Store/supermarket name
+    """
+    logger.info(f"PATCH /api/receipts/{receipt_id} - user_id: {current_user.id}")
+
+    # Convert to dict, excluding None values
+    update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
+
+    receipt = ReceiptService.update_receipt(db, receipt_id, current_user.id, update_dict)
 
     # Convert items to schema
     items = []

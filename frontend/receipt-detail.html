@@ -210,8 +210,18 @@
                 <!-- Receipt Header -->
                 <div class="receipt-header">
                     <div class="flex justify-between items-center">
-                        <div>
-                            <h2 style="margin-bottom: 0.5rem;">${data.store_name}</h2>
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
+                                <h2 id="store-name-display" style="margin: 0;">${data.store_name}</h2>
+                                <button id="edit-store-btn" class="btn btn-outline btn-sm" style="background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); color: white;" onclick="editStoreName()">✏️ Editar</button>
+                            </div>
+                            <div id="store-name-edit" style="display: none; margin-bottom: 0.5rem;">
+                                <div style="display: flex; gap: 0.5rem; align-items: center;">
+                                    <input type="text" id="store-name-input" value="${data.store_name}" style="padding: 0.5rem; border-radius: 0.375rem; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.9); color: #333; flex: 1; max-width: 300px;">
+                                    <button onclick="saveStoreName()" class="btn btn-sm" style="background: rgba(255,255,255,0.9); color: #333;">💾 Guardar</button>
+                                    <button onclick="cancelEdit()" class="btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white;">❌ Cancelar</button>
+                                </div>
+                            </div>
                             <p style="opacity: 0.9; margin-bottom: 0;">${formatDate(data.purchase_date)}</p>
                         </div>
                         <div style="text-align: right;">
@@ -353,6 +363,52 @@
             const overlay = document.getElementById('sidebar-overlay');
             sidebar.classList.toggle('mobile-open');
             overlay.classList.toggle('active');
+        }
+
+        function editStoreName() {
+            document.getElementById('store-name-display').style.display = 'none';
+            document.getElementById('edit-store-btn').style.display = 'none';
+            document.getElementById('store-name-edit').style.display = 'block';
+            document.getElementById('store-name-input').focus();
+        }
+
+        function cancelEdit() {
+            document.getElementById('store-name-display').style.display = 'block';
+            document.getElementById('edit-store-btn').style.display = 'inline-block';
+            document.getElementById('store-name-edit').style.display = 'none';
+            // Reset input to original value
+            document.getElementById('store-name-input').value = receiptData.store_name;
+        }
+
+        async function saveStoreName() {
+            const newStoreName = document.getElementById('store-name-input').value.trim();
+
+            if (!newStoreName) {
+                showToast('El nombre del supermercado no puede estar vacío', 'error');
+                return;
+            }
+
+            if (newStoreName === receiptData.store_name) {
+                cancelEdit();
+                return;
+            }
+
+            try {
+                const response = await window.api.updateReceipt(receiptId, {
+                    store_name: newStoreName
+                });
+
+                if (response.success) {
+                    receiptData.store_name = newStoreName;
+                    document.getElementById('store-name-display').textContent = newStoreName;
+                    cancelEdit();
+                    showToast('Nombre del supermercado actualizado', 'success');
+                } else {
+                    throw new Error(response.error || 'Error al actualizar');
+                }
+            } catch (error) {
+                showToast(error.message || 'Error al actualizar el nombre del supermercado', 'error');
+            }
         }
 
         document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);

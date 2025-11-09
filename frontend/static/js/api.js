@@ -133,6 +133,17 @@ class APIClient {
     }
 
     /**
+     * PATCH request
+     */
+    async patch(endpoint, body, options = {}) {
+        return this.request(endpoint, {
+            ...options,
+            method: 'PATCH',
+            body,
+        });
+    }
+
+    /**
      * DELETE request
      */
     async delete(endpoint, options = {}) {
@@ -232,6 +243,13 @@ class APIClient {
      */
     async getReceipt(id) {
         return this.get(`/receipts/${id}`);
+    }
+
+    /**
+     * Update receipt
+     */
+    async updateReceipt(id, updateData) {
+        return this.patch(`/receipts/${id}`, updateData);
     }
 
     /**

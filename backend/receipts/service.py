@@ -630,6 +630,43 @@ class ReceiptService:
         return receipt
 
     @staticmethod
+    def update_receipt(
+        db: Session,
+        receipt_id: int,
+        user_id: int,
+        update_data: dict
+    ) -> Receipt:
+        """
+        Update a receipt's information.
+
+        Args:
+            db: Database session
+            receipt_id: Receipt ID
+            user_id: User ID (for ownership verification)
+            update_data: Dictionary with fields to update
+
+        Returns:
+            Updated receipt
+
+        Raises:
+            HTTPException: If receipt not found or access denied
+        """
+        receipt = ReceiptService.get_receipt_by_id(db, receipt_id, user_id)
+
+        # Update fields
+        for field, value in update_data.items():
+            if value is not None and hasattr(receipt, field):
+                setattr(receipt, field, value)
+                logger.info(f"Updated receipt {receipt_id} field '{field}' to '{value}'")
+
+        db.commit()
+        db.refresh(receipt)
+
+        logger.info(f"Updated receipt ID={receipt_id} for user {user_id}")
+
+        return receipt
+
+    @staticmethod
     def delete_receipt(
         db: Session,
         receipt_id: int,

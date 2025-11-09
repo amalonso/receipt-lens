@@ -125,6 +125,15 @@ class ClaudeAnalysisResponse(BaseModel):
             raise ValueError('Date must be in YYYY-MM-DD format')
 
 
+class ReceiptUpdateRequest(BaseModel):
+    """Schema for updating a receipt."""
+
+    store_name: Optional[str] = Field(None, description="Store name")
+
+    class Config:
+        from_attributes = True
+
+
 class ReceiptResponse(BaseModel):
     """Standard receipt response wrapper."""
 

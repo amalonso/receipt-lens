@@ -26,20 +26,20 @@ class OpenAIVisionAnalyzer(VisionAnalyzer):
 Fecha actual: {current_date}
 
 
-{
+{{
   "store_name": "nombre del supermercado",
   "purchase_date": "YYYY-MM-DD",
   "items": [
-    {
+    {{
       "product_name": "nombre exacto del producto",
       "category": "una de: bebidas|carne|verduras|lácteos|panadería|limpieza|ocio|otros",
       "quantity": número,
       "unit_price": número con 2 decimales (o null si no disponible),
       "total_price": número con 2 decimales
-    }
+    }}
   ],
   "total_amount": número con 2 decimales
-}
+}}
 
 Reglas importantes:
 - Si no puedes determinar la categoría, usa "otros"
@@ -48,7 +48,8 @@ Reglas importantes:
 - Normaliza nombres de productos (ej: "CERV MAHOU" → "Cerveza Mahou")
 - Asegúrate que la suma de items coincida con total_amount
 - Devuelve SOLO el objeto JSON, sin texto adicional
-- Si no puedes leer algún campo, usa valores por defecto razonables"""
+- Si no puedes leer algún campo, usa valores por defecto razonables
+- Si no puedes identificar el nombre del supermercado con certeza, usa "Desconocido" como store_name"""
 
     def __init__(self, api_key: Optional[str] = None):
         """

@@ -13,6 +13,7 @@ from backend.receipts.claude_analyzer import ClaudeReceiptAnalyzer
 from backend.receipts.google_vision_analyzer import GoogleVisionAnalyzer
 from backend.receipts.ocrspace_analyzer import OCRSpaceAnalyzer
 from backend.receipts.openai_vision_analyzer import OpenAIVisionAnalyzer
+from backend.receipts.grok_vision_analyzer import GrokVisionAnalyzer
 
 logger = logging.getLogger(__name__)
 
@@ -23,6 +24,7 @@ class VisionProvider(str, Enum):
     GOOGLE_VISION = "google_vision"
     OCR_SPACE = "ocrspace"
     OPENAI = "openai"
+    GROK = "grok"
 
 
 class AnalyzerFactory:
@@ -83,6 +85,9 @@ class AnalyzerFactory:
 
             elif provider == VisionProvider.OPENAI:
                 analyzer = OpenAIVisionAnalyzer(api_key=api_key)
+
+            elif provider == VisionProvider.GROK:
+                analyzer = GrokVisionAnalyzer(api_key=api_key)
 
             else:
                 raise VisionAnalyzerError(

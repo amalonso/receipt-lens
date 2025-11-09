@@ -108,12 +108,39 @@ class ClaudeAnalysisResponse(BaseModel):
 
     @validator('purchase_date')
     def validate_date_format(cls, v: str) -> str:
-        """Validate date is in YYYY-MM-DD format."""
-        try:
-            datetime.strptime(v, '%Y-%m-%d')
-            return v
-        except ValueError:
+        """
+        Validate date is in YYYY-MM-DD format.
+
+        Accepts invalid dates like '0000-00-00' which will be handled by
+        the service layer with fallback to today's date.
+        """
+        if not v:
+            raise ValueError('Date cannot be empty')
+
+        # Check basic format (YYYY-MM-DD pattern)
+        parts = v.split('-')
+        if len(parts) != 3:
             raise ValueError('Date must be in YYYY-MM-DD format')
+
+        try:
+            # Validate each part is numeric
+            year, month, day = int(parts[0]), int(parts[1]), int(parts[2])
+
+            # Check basic ranges (allow 0000-00-00 as placeholder for missing date)
+            if not (0 <= year <= 9999):
+                raise ValueError('Year must be between 0000 and 9999')
+            if not (0 <= month <= 12):
+                raise ValueError('Month must be between 00 and 12')
+            if not (0 <= day <= 31):
+                raise ValueError('Day must be between 00 and 31')
+
+            # Format back to ensure consistent YYYY-MM-DD format
+            return f"{year:04d}-{month:02d}-{day:02d}"
+
+        except ValueError as e:
+            if "invalid literal" in str(e):
+                raise ValueError('Date must be in YYYY-MM-DD format with numeric values')
+            raise
 
 
 class ReceiptResponse(BaseModel):

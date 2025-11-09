@@ -40,6 +40,7 @@ class GrokVisionAnalyzer(VisionAnalyzer):
 Reglas importantes:
 - Si no puedes determinar la categoría, usa "otros"
 - Si no hay cantidad explícita, usa 1.0
+- Si no puedes leer la fecha, usa "0000-00-00"
 - Normaliza nombres de productos (ej: "CERV MAHOU" → "Cerveza Mahou")
 - Asegúrate que la suma de items coincida con total_amount
 - Devuelve SOLO el objeto JSON, sin texto adicional

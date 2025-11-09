@@ -108,8 +108,17 @@ class ClaudeAnalysisResponse(BaseModel):
 
     @validator('purchase_date')
     def validate_date_format(cls, v: str) -> str:
-        """Validate date is in YYYY-MM-DD format."""
+        """
+        Validate date is in YYYY-MM-DD format.
+
+        Validates that the date is a real calendar date using datetime.strptime.
+        The service layer has fallback logic to use today's date if needed.
+        """
+        if not v:
+            raise ValueError('Date cannot be empty')
+
         try:
+            # Validate using datetime.strptime for proper date validation
             datetime.strptime(v, '%Y-%m-%d')
             return v
         except ValueError:

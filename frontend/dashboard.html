@@ -174,7 +174,7 @@
 
                 if (summaryResponse.success) {
                     renderStats(summaryResponse.data);
-                    renderCategoryChart(summaryResponse.data.categories);
+                    renderCategoryChart(summaryResponse.data.spending_by_category);
                     renderTopProducts(summaryResponse.data.top_products);
                 }
 
@@ -206,7 +206,7 @@
                 <div class="stat-card" style="border-left-color: var(--success-color);">
                     <div class="stat-header">
                         <div>
-                            <div class="stat-value">${data.total_receipts}</div>
+                            <div class="stat-value">${data.receipts_count}</div>
                             <div class="stat-label">Facturas</div>
                         </div>
                         <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">🧾</div>
@@ -217,7 +217,7 @@
                 <div class="stat-card" style="border-left-color: var(--info-color);">
                     <div class="stat-header">
                         <div>
-                            <div class="stat-value">${data.total_items}</div>
+                            <div class="stat-value">${data.items_count}</div>
                             <div class="stat-label">Productos</div>
                         </div>
                         <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🛒</div>
@@ -228,7 +228,7 @@
                 <div class="stat-card" style="border-left-color: var(--warning-color);">
                     <div class="stat-header">
                         <div>
-                            <div class="stat-value">${formatCurrency(data.avg_per_receipt)}</div>
+                            <div class="stat-value">${formatCurrency(data.avg_receipt_amount)}</div>
                             <div class="stat-label">Promedio por Factura</div>
                         </div>
                         <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">📊</div>
@@ -255,7 +255,7 @@
                 data: {
                     labels: categories.map(c => c.category),
                     datasets: [{
-                        data: categories.map(c => c.total),
+                        data: categories.map(c => c.amount),
                         backgroundColor: categories.map(c => getCategoryColor(c.category)),
                     }],
                 },
@@ -295,12 +295,12 @@
                     <div style="display: flex; align-items: center; gap: 0.75rem;">
                         <span style="font-weight: 700; color: var(--primary-color); font-size: 1.125rem;">${index + 1}</span>
                         <div>
-                            <div style="font-weight: 600;">${product.product}</div>
-                            <div style="font-size: 0.875rem; color: var(--text-secondary);">${product.quantity} unidades</div>
+                            <div style="font-weight: 600;">${product.product_name}</div>
+                            <div style="font-size: 0.875rem; color: var(--text-secondary);">${product.times_purchased} unidades</div>
                         </div>
                     </div>
                     <div style="text-align: right;">
-                        <div style="font-weight: 700;">${formatCurrency(product.total)}</div>
+                        <div style="font-weight: 700;">${formatCurrency(product.total_spent)}</div>
                     </div>
                 </div>
             `).join('');
@@ -328,7 +328,7 @@
                         <div class="receipt-date">${formatDate(receipt.purchase_date)}</div>
                     </div>
                     <div class="receipt-meta">
-                        <div class="receipt-items-count">${receipt.items_count || 0} items</div>
+                        <div class="receipt-items-count">${receipt.item_count || 0} items</div>
                         <div class="receipt-amount">${formatCurrency(receipt.total_amount)}</div>
                     </div>
                 </div>

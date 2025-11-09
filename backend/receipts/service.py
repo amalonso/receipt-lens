@@ -232,14 +232,27 @@ class ReceiptService:
             # Analyze with configured vision provider
             logger.info(f"Starting analysis with provider: {settings.vision_provider}...")
             logger.debug(f"Image saved at: {file_path}")
+            logger.debug(f"File size: {len(file_content)} bytes")
+            logger.debug(f"File hash: {file_hash}")
             try:
                 analyzer = get_analyzer()
                 logger.debug(f"Analyzer created: {analyzer.__class__.__name__}")
+                logger.debug("=" * 60)
+                logger.debug("Starting receipt image analysis...")
+                logger.debug("=" * 60)
                 analysis = await analyzer.analyze_receipt(file_path)
-                logger.debug(f"Analysis completed, validating...")
+                logger.debug("=" * 60)
+                logger.debug("Analysis completed, validating results...")
+                logger.debug(f"Store name: {analysis.store_name}")
+                logger.debug(f"Purchase date: {analysis.purchase_date}")
+                logger.debug(f"Total amount: {analysis.total_amount}")
+                logger.debug(f"Number of items: {len(analysis.items)}")
+                for idx, item in enumerate(analysis.items, 1):
+                    logger.debug(f"  Item {idx}: {item.product_name} - {item.category} - Qty: {item.quantity} - Price: {item.total_price}")
+                logger.debug("=" * 60)
                 # Validate analysis
                 analyzer.validate_analysis(analysis)
-                logger.info(f"Analysis validation successful")
+                logger.info(f"Analysis validation successful: {len(analysis.items)} items extracted")
             except VisionAnalyzerError as vision_error:
                 # If vision API fails and PaddleOCR is available, fallback
                 logger.error(f"Vision API error: {str(vision_error)}", exc_info=True)

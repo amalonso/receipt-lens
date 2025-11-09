@@ -19,11 +19,38 @@ from backend.config import settings
 from backend.database.session import engine, init_db
 
 # Configure logging
-logging.basicConfig(
-    level=getattr(logging, settings.log_level),
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
+def configure_logging():
+    """Configure application logging with proper levels for all components."""
+    # Set root logger level
+    root_level = getattr(logging, settings.log_level.upper(), logging.INFO)
+    logging.basicConfig(
+        level=root_level,
+        format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+        force=True  # Override any existing configuration
+    )
+
+    # Configure SQLAlchemy loggers separately
+    db_level = getattr(logging, settings.db_log_level.upper(), logging.WARNING)
+
+    # SQLAlchemy engine logger (connection pool, transactions)
+    logging.getLogger('sqlalchemy.engine').setLevel(db_level)
+
+    # SQLAlchemy pool logger (connection pool events)
+    logging.getLogger('sqlalchemy.pool').setLevel(db_level)
+
+    # SQLAlchemy dialects logger (SQL dialect specific)
+    logging.getLogger('sqlalchemy.dialects').setLevel(db_level)
+
+    # SQLAlchemy orm logger (ORM operations)
+    logging.getLogger('sqlalchemy.orm').setLevel(db_level)
+
+    # If db_echo is False, ensure SQLAlchemy doesn't log queries
+    if not settings.db_echo:
+        logging.getLogger('sqlalchemy.engine').setLevel(logging.WARNING)
+
+    return logging.getLogger(__name__)
+
+logger = configure_logging()
 
 
 @asynccontextmanager
@@ -33,10 +60,14 @@ async def lifespan(app: FastAPI):
     Runs on startup and shutdown.
     """
     # Startup
+    logger.info("=" * 60)
     logger.info("Starting Receipt Lens application...")
     logger.info(f"Environment: {settings.environment}")
     logger.info(f"Debug mode: {settings.debug}")
+    logger.info(f"Log level: {settings.log_level}")
+    logger.info(f"Database logging: {'ENABLED' if settings.db_echo else 'DISABLED'} (level: {settings.db_log_level})")
     logger.info(f"Vision Provider: {settings.vision_provider}")
+    logger.info("=" * 60)
 
     # Validate vision provider configuration
     _validate_vision_config()

@@ -65,8 +65,18 @@ class Settings(BaseSettings):
         description="Debug mode"
     )
     log_level: str = Field(
-        default="INFO",
-        description="Logging level"
+        default="DEBUG",
+        description="Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
+    )
+
+    # Database Logging
+    db_echo: bool = Field(
+        default=False,
+        description="Enable SQLAlchemy query logging (shows all SQL queries)"
+    )
+    db_log_level: str = Field(
+        default="WARNING",
+        description="SQLAlchemy logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)"
     )
 
     # Upload Settings

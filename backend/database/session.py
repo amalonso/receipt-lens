@@ -15,9 +15,9 @@ from backend.config import settings
 # For testing, use NullPool to avoid connection issues
 engine = create_engine(
     settings.database_url,
-    echo=settings.debug,  # Log SQL queries in debug mode
-    pool_pre_ping=True,   # Verify connections before using them
-    # poolclass=NullPool  # Uncomment for testing environments
+    echo=settings.db_echo,  # Log SQL queries (controlled by DB_ECHO setting)
+    pool_pre_ping=True,     # Verify connections before using them
+    # poolclass=NullPool    # Uncomment for testing environments
 )
 
 # Create session factory

@@ -29,6 +29,7 @@ from backend.receipts.paddleocr_analyzer import (
     is_paddleocr_available,
     PaddleOCRAnalyzerError
 )
+from backend.receipts.image_processor import ReceiptImageProcessor
 
 logger = logging.getLogger(__name__)
 
@@ -352,6 +353,210 @@ class ReceiptService:
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail=f"Failed to process receipt: {str(e)}"
+            )
+
+    @staticmethod
+    async def upload_and_analyze_multiple_receipts(
+        db: Session,
+        user_id: int,
+        files: List[UploadFile]
+    ) -> Receipt:
+        """
+        Upload multiple receipt images, merge them, and analyze as one receipt.
+
+        This function is useful for long receipts that require multiple photos.
+        It will:
+        1. Validate and save each image
+        2. Detect and crop receipt borders automatically
+        3. Merge all images vertically into one
+        4. Analyze the merged image with AI
+        5. Save the result to database
+
+        Args:
+            db: Database session
+            user_id: User ID
+            files: List of uploaded files
+
+        Returns:
+            Receipt object
+
+        Raises:
+            HTTPException: If upload or analysis fails
+        """
+        if not files:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="No files provided"
+            )
+
+        logger.info(f"Processing {len(files)} receipt images for user {user_id}")
+
+        temp_file_paths = []
+
+        try:
+            # Step 1: Validate and save each file temporarily
+            for i, file in enumerate(files):
+                logger.info(f"Processing file {i + 1}/{len(files)}: {file.filename}")
+
+                # Validate file
+                ReceiptService._validate_file(file)
+
+                # Save file temporarily
+                file_path, _, _ = await ReceiptService._save_upload_file(
+                    file, user_id
+                )
+                temp_file_paths.append(file_path)
+
+            # Step 2: Process and merge images
+            logger.info(f"Merging {len(temp_file_paths)} images...")
+
+            # Create output path for merged image
+            timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+            user_upload_dir = Path(settings.upload_dir) / f"user_{user_id}"
+            user_upload_dir.mkdir(parents=True, exist_ok=True)
+            merged_path = str(user_upload_dir / f"{timestamp}_merged.jpg")
+
+            # Process and merge images
+            ReceiptImageProcessor.process_multiple_receipts(
+                image_paths=temp_file_paths,
+                output_path=merged_path,
+                crop=True,  # Auto-crop receipt borders
+                margin=10,  # 10px margin around detected borders
+                spacing=20  # 20px spacing between images
+            )
+
+            logger.info(f"Images merged successfully: {merged_path}")
+
+            # Step 3: Calculate hash of merged image
+            with open(merged_path, 'rb') as f:
+                merged_content = f.read()
+            file_hash = ReceiptService._calculate_file_hash(merged_content)
+
+            # Step 4: Check for duplicates
+            existing = ReceiptService._check_duplicate(db, user_id, file_hash)
+            if existing:
+                logger.warning(f"Duplicate receipt detected: {file_hash}")
+                # Delete all temporary files
+                for temp_path in temp_file_paths:
+                    if os.path.exists(temp_path):
+                        os.remove(temp_path)
+                if os.path.exists(merged_path):
+                    os.remove(merged_path)
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail=f"This receipt has already been uploaded (Receipt ID: {existing.id})"
+                )
+
+            # Step 5: Delete original temporary files (keep only merged)
+            for temp_path in temp_file_paths:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+                    logger.debug(f"Deleted temporary file: {temp_path}")
+            temp_file_paths = []  # Clear list
+
+            # Step 6: Analyze merged image with AI
+            logger.info(f"Starting analysis with provider: {settings.vision_provider}...")
+            logger.debug(f"Merged image saved at: {merged_path}")
+            logger.debug(f"File size: {len(merged_content)} bytes")
+            logger.debug(f"File hash: {file_hash}")
+
+            try:
+                analyzer = get_analyzer()
+                logger.debug(f"Analyzer created: {analyzer.__class__.__name__}")
+                logger.debug("=" * 60)
+                logger.debug("Starting merged receipt image analysis...")
+                logger.debug("=" * 60)
+                analysis = await analyzer.analyze_receipt(merged_path)
+                logger.debug("=" * 60)
+                logger.debug("Analysis completed, validating results...")
+                logger.debug(f"Store name: {analysis.store_name}")
+                logger.debug(f"Purchase date: {analysis.purchase_date}")
+                logger.debug(f"Total amount: {analysis.total_amount}")
+                logger.debug(f"Number of items: {len(analysis.items)}")
+
+                # Validate analysis
+                analyzer.validate_analysis(analysis)
+                logger.info(f"Analysis validation successful: {len(analysis.items)} items extracted")
+
+            except VisionAnalyzerError as vision_error:
+                # If vision API fails and PaddleOCR is available, fallback
+                logger.error(f"Vision API error: {str(vision_error)}", exc_info=True)
+                if is_paddleocr_available():
+                    logger.warning(f"Vision API analysis failed, falling back to PaddleOCR")
+                    paddleocr_analyzer = get_paddleocr_analyzer()
+                    analysis = await paddleocr_analyzer.analyze_receipt(merged_path)
+                else:
+                    raise HTTPException(
+                        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+                        detail=f"Receipt analysis service unavailable. Vision provider '{settings.vision_provider}' failed."
+                    )
+
+            # Step 7: Parse date
+            try:
+                purchase_date = datetime.strptime(analysis.purchase_date, '%Y-%m-%d').date()
+            except ValueError:
+                logger.warning(f"Invalid date from AI: {analysis.purchase_date}, using today")
+                purchase_date = date.today()
+
+            # Step 8: Create receipt in database
+            receipt = Receipt(
+                user_id=user_id,
+                store_name=analysis.store_name,
+                purchase_date=purchase_date,
+                total_amount=analysis.total_amount,
+                image_path=merged_path,
+                image_hash=file_hash,
+                processed=True
+            )
+
+            db.add(receipt)
+            db.flush()  # Get receipt ID
+
+            logger.info(f"Created receipt: ID={receipt.id}, store={receipt.store_name}")
+
+            # Step 9: Create items
+            for item_data in analysis.items:
+                category = ReceiptService._get_or_create_category(db, item_data.category)
+
+                item = Item(
+                    receipt_id=receipt.id,
+                    category_id=category.id,
+                    product_name=item_data.product_name,
+                    quantity=item_data.quantity,
+                    unit_price=item_data.unit_price,
+                    total_price=item_data.total_price
+                )
+                db.add(item)
+
+            # Step 10: Commit transaction
+            db.commit()
+            db.refresh(receipt)
+
+            logger.info(
+                f"Multiple receipt images processed successfully: "
+                f"{len(files)} images merged into 1, {len(analysis.items)} items saved"
+            )
+
+            return receipt
+
+        except HTTPException:
+            db.rollback()
+            # Clean up all temporary files
+            for temp_path in temp_file_paths:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            raise
+
+        except Exception as e:
+            db.rollback()
+            # Clean up all temporary files
+            for temp_path in temp_file_paths:
+                if os.path.exists(temp_path):
+                    os.remove(temp_path)
+            logger.error(f"Unexpected error processing multiple receipts: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to process receipt images: {str(e)}"
             )
 
     @staticmethod

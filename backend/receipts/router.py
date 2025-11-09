@@ -76,6 +76,74 @@ async def upload_receipt(
         raise
 
 
+@router.post(
+    "/upload-multiple",
+    response_model=ReceiptResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Upload and merge multiple receipt images",
+    description="Upload multiple receipt images for a single long receipt. Images will be automatically cropped, merged, and analyzed."
+)
+async def upload_multiple_receipts(
+    files: List[UploadFile] = File(..., description="Multiple receipt image files (JPG, PNG)"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Upload multiple receipt images for a single long receipt.
+
+    This is useful for long receipts (like supermarket receipts) where multiple
+    photos are needed to capture all details.
+
+    - **files**: Multiple receipt images (max 10MB each, formats: jpg, png)
+
+    The process:
+    1. Each image is automatically cropped to remove background
+    2. All images are merged vertically into one
+    3. The merged image is analyzed by AI to extract:
+       - Store name
+       - Purchase date
+       - Individual items with categories and prices
+       - Total amount
+
+    Returns the created receipt with extracted data.
+    """
+    logger.info(f"POST /api/receipts/upload-multiple - user_id: {current_user.id}, files: {len(files)}")
+
+    if not files:
+        return {
+            "success": False,
+            "data": None,
+            "error": "No files provided"
+        }
+
+    if len(files) > 10:
+        return {
+            "success": False,
+            "data": None,
+            "error": "Maximum 10 images allowed per receipt"
+        }
+
+    try:
+        receipt = await ReceiptService.upload_and_analyze_multiple_receipts(
+            db,
+            current_user.id,
+            files
+        )
+
+        return {
+            "success": True,
+            "data": {
+                "receipt": ReceiptUploadResponse.from_orm(receipt).dict(),
+                "message": f"{len(files)} images merged and analyzed successfully. {len(receipt.items.all())} items extracted."
+            },
+            "error": None
+        }
+
+    except Exception as e:
+        logger.error(f"Multiple upload error: {str(e)}")
+        raise
+
+
 @router.get(
     "",
     response_model=ReceiptResponse,

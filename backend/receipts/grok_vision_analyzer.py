@@ -5,6 +5,7 @@ Uses xAI's Grok Vision API to extract structured data from receipt images.
 
 import logging
 import json
+from datetime import date
 from typing import Optional
 
 from openai import AsyncOpenAI
@@ -19,8 +20,11 @@ logger = logging.getLogger(__name__)
 class GrokVisionAnalyzer(VisionAnalyzer):
     """Service for analyzing receipt images using xAI Grok Vision."""
 
-    # Prompt template for receipt analysis
-    ANALYSIS_PROMPT = """Analiza esta imagen de factura de supermercado y extrae la siguiente información en formato JSON estricto:
+    # Prompt template for receipt analysis (will be formatted with current date)
+    ANALYSIS_PROMPT_TEMPLATE = """Analiza esta imagen de factura de supermercado y extrae la siguiente información en formato JSON estricto.
+
+Fecha actual: {current_date}
+
 
 {
   "store_name": "nombre del supermercado",
@@ -40,7 +44,7 @@ class GrokVisionAnalyzer(VisionAnalyzer):
 Reglas importantes:
 - Si no puedes determinar la categoría, usa "otros"
 - Si no hay cantidad explícita, usa 1.0
-- Si no puedes leer la fecha, usa "0000-00-00"
+- Si no puedes leer la fecha en el recibo, usa la fecha actual indicada arriba
 - Normaliza nombres de productos (ej: "CERV MAHOU" → "Cerveza Mahou")
 - Asegúrate que la suma de items coincida con total_amount
 - Devuelve SOLO el objeto JSON, sin texto adicional
@@ -134,6 +138,10 @@ Reglas importantes:
             # Encode image
             image_data, media_type = self._encode_image(image_path)
 
+            # Format prompt with current date
+            current_date = date.today().strftime('%Y-%m-%d')
+            prompt = self.ANALYSIS_PROMPT_TEMPLATE.format(current_date=current_date)
+
             # Call Grok API (OpenAI-compatible)
             logger.info("Sending request to xAI Grok API...")
             response = await self.client.chat.completions.create(
@@ -151,7 +159,7 @@ Reglas importantes:
                             },
                             {
                                 "type": "text",
-                                "text": self.ANALYSIS_PROMPT
+                                "text": prompt
                             }
                         ]
                     }

@@ -20,7 +20,7 @@ class Settings(BaseSettings):
     # Vision API Configuration
     vision_provider: str = Field(
         default="claude",
-        description="Vision API provider: claude|google_vision|ocrspace|openai"
+        description="Vision API provider: claude|google_vision|ocrspace|openai|grok"
     )
 
     # API Keys
@@ -39,6 +39,10 @@ class Settings(BaseSettings):
     openai_api_key: str = Field(
         default="",
         description="OpenAI API key for GPT-4o Vision"
+    )
+    xai_api_key: str = Field(
+        default="",
+        description="xAI API key for Grok Vision"
     )
 
     # Security
@@ -118,7 +122,7 @@ class Settings(BaseSettings):
     @validator('vision_provider')
     def validate_vision_provider(cls, v: str) -> str:
         """Validate vision provider value."""
-        valid_providers = ['claude', 'google_vision', 'ocrspace', 'openai']
+        valid_providers = ['claude', 'google_vision', 'ocrspace', 'openai', 'grok']
         v = v.lower()
         if v not in valid_providers:
             raise ValueError(

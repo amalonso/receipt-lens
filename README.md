@@ -10,8 +10,9 @@ Sistema web auto-hospedado para analizar facturas de supermercado usando Claude 
 ## ✨ Features Principales
 
 ### 🤖 Análisis con IA
-- **Múltiples Proveedores de Visión**: Soporta Claude, Google Vision, OCR.space y OpenAI
+- **Múltiples Proveedores de Visión**: Soporta Grok Vision, Claude, Google Vision, OCR.space y OpenAI
 - **Configuración Flexible**: Elige el proveedor que mejor se adapte a tus necesidades
+- **Grok Vision**: ⭐ Mejor relación precio/calidad ($0.005-0.015/recibo, 50% más barato que Claude)
 - **Opciones Gratuitas**: Google Vision (1,000/mes gratis) y OCR.space (500/día gratis)
 - **Claude Sonnet 4**: Extracción automática de datos de imágenes de facturas (opcional)
 - **PaddleOCR Fallback**: Sistema local de OCR cuando no hay API key configurada
@@ -51,6 +52,11 @@ Sistema web auto-hospedado para analizar facturas de supermercado usando Claude 
 - **Autenticación**: JWT (python-jose) + Bcrypt (passlib)
 - **Validación**: Pydantic 2.5+
 - **Testing**: pytest + httpx
+
+### Frontend
+- **Framework**: Vanilla JavaScript con diseño moderno y responsive
+- **Gráficos**: Chart.js para visualizaciones interactivas
+- **UI/UX**: Drag & Drop, validación en tiempo real, notificaciones toast
 
 ### Infraestructura
 - **Containerización**: Docker + Docker Compose
@@ -152,18 +158,20 @@ receipt-lens/
    JWT_SECRET_KEY=tu_secret_key_generada
 
    # Proveedor de Visión (ver VISION_PROVIDERS.md para más opciones)
-   VISION_PROVIDER=ocrspace  # o claude, google_vision, openai
+   VISION_PROVIDER=ocrspace  # o grok, claude, google_vision, openai
 
    # API Keys (solo configurar para el proveedor que uses)
    OCRSPACE_API_KEY=helloworld  # Gratis - 500 requests/día
-   # ANTHROPIC_API_KEY=sk-ant-...  # Claude (de pago)
+   # XAI_API_KEY=xai-...  # Grok Vision (mejor precio/calidad: $0.005-0.015/recibo)
+   # ANTHROPIC_API_KEY=sk-ant-...  # Claude (de pago: $0.01-0.05/recibo)
    # GOOGLE_VISION_CREDENTIALS=/path/to/credentials.json  # 1,000/mes gratis
-   # OPENAI_API_KEY=sk-...  # OpenAI (de pago)
+   # OPENAI_API_KEY=sk-...  # OpenAI (de pago: $0.02-0.08/recibo)
    ```
 
    **📋 Guía de Proveedores:**
    - **Para empezar gratis**: Usa `VISION_PROVIDER=ocrspace` (500/día gratis)
-   - **Para mejor precisión**: Usa `VISION_PROVIDER=claude` (requiere API key de pago)
+   - **Para mejor precio/calidad**: Usa `VISION_PROVIDER=grok` ⭐ Recomendado ($0.005-0.015/recibo)
+   - **Para alta precisión**: Usa `VISION_PROVIDER=claude` (requiere API key de pago, más caro)
    - **Para uso personal**: Usa `VISION_PROVIDER=google_vision` (1,000/mes gratis)
    - Ver [VISION_PROVIDERS.md](VISION_PROVIDERS.md) para comparación completa
    **💡 Modos de Operación:**
@@ -499,13 +507,14 @@ POSTGRES_USER=admin
 POSTGRES_PASSWORD=contraseña_segura
 
 # Proveedor de Visión
-VISION_PROVIDER=claude|google_vision|ocrspace|openai
+VISION_PROVIDER=claude|google_vision|ocrspace|openai|grok
 
 # API Keys (configurar solo el proveedor que uses)
 ANTHROPIC_API_KEY=sk-ant-...
 GOOGLE_VISION_CREDENTIALS=/path/to/credentials.json
 OCRSPACE_API_KEY=helloworld
 OPENAI_API_KEY=sk-...
+XAI_API_KEY=xai-...
 
 # Seguridad
 JWT_SECRET_KEY=secret_key_generada

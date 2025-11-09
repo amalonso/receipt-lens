@@ -4,7 +4,39 @@ Receipt Lens soporta múltiples proveedores de APIs de visión para el análisis
 
 ## Proveedores Disponibles
 
-### 1. Claude (Anthropic) ⭐ Recomendado
+### 1. Grok Vision (xAI) ⭐ Mejor relación calidad/precio
+
+**Descripción:** Utiliza Grok Vision de xAI para análisis avanzado de imágenes con excelente comprensión contextual.
+
+**Ventajas:**
+- **50% más barato que Claude** ($0.005-0.015 vs $0.01-0.05)
+- **2-4x más barato que OpenAI**
+- Análisis preciso y contextual similar a Claude
+- Excelente comprensión de texto en español
+- Extracción estructurada de datos
+- **Contexto de 2M tokens** - puede procesar recibos muy largos
+- Categorización inteligente de productos
+
+**Desventajas:**
+- Requiere API key de pago
+- No tiene tier gratuito
+
+**Configuración:**
+```env
+VISION_PROVIDER=grok
+XAI_API_KEY=xai-xxxxx
+```
+
+**Precio:**
+- Entrada: $2 por millón de tokens
+- Salida: $10 por millón de tokens
+- Aprox. **$0.005-0.015 por recibo procesado**
+
+**Obtener API Key:** [xAI Console](https://console.x.ai/)
+
+---
+
+### 2. Claude (Anthropic)
 
 **Descripción:** Utiliza Claude Sonnet 4 de Anthropic para análisis avanzado de imágenes con comprensión contextual.
 
@@ -33,7 +65,7 @@ ANTHROPIC_API_KEY=sk-ant-xxxxx
 
 ---
 
-### 2. Google Cloud Vision API
+### 3. Google Cloud Vision API
 
 **Descripción:** API de Google Cloud para OCR y detección de texto en imágenes.
 
@@ -67,7 +99,7 @@ GOOGLE_VISION_CREDENTIALS=/path/to/google-credentials.json
 
 ---
 
-### 3. OCR.space ⭐ Mejor opción gratuita
+### 4. OCR.space ⭐ Mejor opción gratuita
 
 **Descripción:** Servicio de OCR gratuito con generoso tier gratuito.
 
@@ -99,7 +131,7 @@ OCRSPACE_API_KEY=helloworld  # Para pruebas, obtén tu propia key
 
 ---
 
-### 4. OpenAI GPT-4o Vision
+### 5. OpenAI GPT-4o Vision
 
 **Descripción:** Modelo multimodal de OpenAI con capacidades de visión.
 
@@ -133,10 +165,11 @@ OPENAI_API_KEY=sk-xxxxx
 
 | Proveedor | Tier Gratuito | Precio después | Precisión | Configuración |
 |-----------|---------------|----------------|-----------|---------------|
-| **Claude** | ❌ No | ~$0.03/recibo | ⭐⭐⭐⭐⭐ | Fácil |
+| **Grok Vision** | ❌ No | ~$0.005-0.015/recibo | ⭐⭐⭐⭐⭐ | Fácil |
+| **Claude** | ❌ No | ~$0.01-0.05/recibo | ⭐⭐⭐⭐⭐ | Fácil |
 | **Google Vision** | ✅ 1,000/mes | $0.0015/recibo | ⭐⭐⭐⭐ | Media |
 | **OCR.space** | ✅ 500/día | $6.99/mes ilimitado | ⭐⭐⭐ | Muy fácil |
-| **OpenAI** | ❌ No | ~$0.05/recibo | ⭐⭐⭐⭐⭐ | Fácil |
+| **OpenAI** | ❌ No | ~$0.02-0.08/recibo | ⭐⭐⭐⭐⭐ | Fácil |
 
 ## Recomendaciones de Uso
 
@@ -153,10 +186,14 @@ OPENAI_API_KEY=sk-xxxxx
 - Infraestructura confiable
 
 ### Para Uso Profesional
-**Usar: Claude o OpenAI**
-- Mejor precisión y categorización
+**Usar: Grok Vision** ⭐ Recomendado
+- **Mejor relación precio/calidad**
+- 50% más barato que Claude, 2-4x más barato que OpenAI
+- Precisión similar a Claude y OpenAI
 - Análisis contextual inteligente
-- Resultados más estructurados
+- Resultados estructurados
+
+**Alternativas:** Claude o OpenAI (más caros pero igualmente buenos)
 
 ### Para Alto Volumen (> 5,000 recibos/mes)
 **Usar: Google Cloud Vision**
@@ -169,13 +206,16 @@ OPENAI_API_KEY=sk-xxxxx
 Para cambiar de proveedor, simplemente actualiza la variable `VISION_PROVIDER` en tu archivo `.env`:
 
 ```bash
+# Cambiar a Grok Vision (mejor precio/calidad)
+VISION_PROVIDER=grok
+
 # Cambiar a OCR.space (gratis)
 VISION_PROVIDER=ocrspace
 
 # Cambiar a Google Vision (1,000 gratis/mes)
 VISION_PROVIDER=google_vision
 
-# Cambiar a Claude (mejor precisión)
+# Cambiar a Claude (alta precisión)
 VISION_PROVIDER=claude
 
 # Cambiar a OpenAI
@@ -186,12 +226,13 @@ No es necesario reiniciar el servidor, el cambio se aplicará en el siguiente an
 
 ## Precisión de Análisis
 
-### Claude y OpenAI (⭐⭐⭐⭐⭐)
+### Grok Vision, Claude y OpenAI (⭐⭐⭐⭐⭐)
 - Extracción precisa de productos individuales
 - Categorización automática inteligente
 - Detección de precios unitarios y totales
 - Normalización de nombres de productos
 - Detección de descuentos y promociones
+- Contexto de 2M tokens (Grok)
 
 ### Google Cloud Vision (⭐⭐⭐⭐)
 - OCR preciso del texto

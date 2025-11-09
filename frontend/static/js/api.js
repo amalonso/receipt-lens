@@ -221,6 +221,18 @@ class APIClient {
     }
 
     /**
+     * Upload multiple receipt images for a single long receipt
+     */
+    async uploadMultipleReceipts(files) {
+        const formData = new FormData();
+        // Append each file to the FormData
+        for (let i = 0; i < files.length; i++) {
+            formData.append('files', files[i]);
+        }
+        return this.post('/receipts/upload-multiple', formData);
+    }
+
+    /**
      * Get receipts list (paginated)
      */
     async getReceipts(page = 1, pageSize = 20) {

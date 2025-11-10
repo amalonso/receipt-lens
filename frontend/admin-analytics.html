@@ -109,7 +109,7 @@
 
         async function loadUsers() {
             try {
-                const response = await api.request('/admin/users?page=1&page_size=1000');
+                const response = await api.request('/admin/users?page=1&page_size=100');
                 allUsers = response.users;
                 const select = document.getElementById('user-select');
                 allUsers.forEach(user => {

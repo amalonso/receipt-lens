@@ -30,6 +30,7 @@ from backend.receipts.paddleocr_analyzer import (
     PaddleOCRAnalyzerError
 )
 from backend.receipts.image_processor import ReceiptImageProcessor
+from backend.admin.models import ApiCost
 
 logger = logging.getLogger(__name__)
 
@@ -300,6 +301,22 @@ class ReceiptService:
 
             logger.info(f"Created receipt: ID={receipt.id}, store={receipt.store_name}")
 
+            # Track API cost if usage info is available
+            if hasattr(analyzer, 'last_usage_info') and analyzer.last_usage_info:
+                usage = analyzer.last_usage_info
+                api_cost = ApiCost(
+                    user_id=user_id,
+                    receipt_id=receipt.id,
+                    provider=usage.get('provider', 'unknown'),
+                    model=usage.get('model'),
+                    input_tokens=usage.get('input_tokens'),
+                    output_tokens=usage.get('output_tokens'),
+                    cost_usd=usage.get('cost_usd', 0.0),
+                    success=True
+                )
+                db.add(api_cost)
+                logger.info(f"Tracked API cost: ${usage.get('cost_usd', 0):.6f} for receipt {receipt.id}")
+
             # Create items
             for item_data in analysis.items:
                 # Get or create category
@@ -513,6 +530,22 @@ class ReceiptService:
             db.flush()  # Get receipt ID
 
             logger.info(f"Created receipt: ID={receipt.id}, store={receipt.store_name}")
+
+            # Track API cost if usage info is available
+            if hasattr(analyzer, 'last_usage_info') and analyzer.last_usage_info:
+                usage = analyzer.last_usage_info
+                api_cost = ApiCost(
+                    user_id=user_id,
+                    receipt_id=receipt.id,
+                    provider=usage.get('provider', 'unknown'),
+                    model=usage.get('model'),
+                    input_tokens=usage.get('input_tokens'),
+                    output_tokens=usage.get('output_tokens'),
+                    cost_usd=usage.get('cost_usd', 0.0),
+                    success=True
+                )
+                db.add(api_cost)
+                logger.info(f"Tracked API cost: ${usage.get('cost_usd', 0):.6f} for receipt {receipt.id}")
 
             # Step 9: Create items
             for item_data in analysis.items:

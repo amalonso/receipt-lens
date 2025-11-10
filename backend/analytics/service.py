@@ -130,6 +130,82 @@ class AnalyticsService:
         )
 
     @staticmethod
+    def get_all_time_summary(
+        db: Session,
+        user_id: int
+    ) -> MonthlySummaryResponse:
+        """
+        Get spending summary for all time (all receipts).
+
+        Args:
+            db: Database session
+            user_id: User ID
+
+        Returns:
+            MonthlySummaryResponse with all-time summary data
+        """
+        logger.info(f"Generating all-time summary for user {user_id}")
+
+        # Get all receipts for the user
+        receipts = db.query(Receipt).filter(
+            Receipt.user_id == user_id
+        ).all()
+
+        if not receipts:
+            logger.info("No receipts found")
+            return MonthlySummaryResponse(
+                month=datetime.now().month,
+                year=datetime.now().year,
+                total_spent=0.0,
+                receipts_count=0,
+                items_count=0,
+                spending_by_category=[],
+                top_products=[],
+                avg_receipt_amount=0.0,
+                stores_visited=[]
+            )
+
+        receipt_ids = [r.id for r in receipts]
+
+        # Calculate total spent
+        total_spent = sum(float(r.total_amount) for r in receipts)
+        receipts_count = len(receipts)
+        avg_receipt = total_spent / receipts_count if receipts_count > 0 else 0.0
+
+        # Get all items for these receipts
+        items = db.query(Item).filter(Item.receipt_id.in_(receipt_ids)).all()
+        items_count = len(items)
+
+        # Calculate spending by category
+        category_spending = AnalyticsService._calculate_category_spending(
+            db, items, total_spent
+        )
+
+        # Calculate top products
+        top_products = AnalyticsService._calculate_top_products(db, items, receipt_ids)
+
+        # Get list of stores visited
+        stores_visited = list(set(r.store_name for r in receipts))
+
+        logger.info(
+            f"All-time summary: €{total_spent:.2f}, "
+            f"{receipts_count} receipts, "
+            f"{items_count} items"
+        )
+
+        return MonthlySummaryResponse(
+            month=datetime.now().month,
+            year=datetime.now().year,
+            total_spent=total_spent,
+            receipts_count=receipts_count,
+            items_count=items_count,
+            spending_by_category=category_spending,
+            top_products=top_products,
+            avg_receipt_amount=avg_receipt,
+            stores_visited=stores_visited
+        )
+
+    @staticmethod
     def _calculate_category_spending(
         db: Session,
         items: List[Item],

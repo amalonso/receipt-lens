@@ -73,6 +73,47 @@ async def get_monthly_summary(
 
 
 @router.get(
+    "/all-time-summary",
+    response_model=AnalyticsResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get all-time spending summary",
+    description="Get detailed spending analytics for all receipts"
+)
+async def get_all_time_summary(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get all-time spending summary with category breakdown and top products.
+
+    Returns:
+    - Total spent across all receipts
+    - Number of receipts and items
+    - Spending breakdown by category
+    - Top 10 most purchased products
+    - Average receipt amount
+    - List of stores visited
+    """
+    logger.info(f"GET /api/analytics/all-time-summary - user: {current_user.id}")
+
+    try:
+        summary = AnalyticsService.get_all_time_summary(
+            db,
+            current_user.id
+        )
+
+        return {
+            "success": True,
+            "data": summary.dict(),
+            "error": None
+        }
+
+    except Exception as e:
+        logger.error(f"All-time summary error: {str(e)}")
+        raise
+
+
+@router.get(
     "/store-comparison",
     response_model=AnalyticsResponse,
     status_code=status.HTTP_200_OK,

@@ -258,6 +258,7 @@
                     <span class="icon"><i data-lucide="user"></i></span>
                     <span>Perfil</span>
                 </a>
+                <div id="admin-nav-section" style="display: none;"></div>
             </nav>
 
             <div class="sidebar-footer">
@@ -446,6 +447,7 @@
 
     <script src="/static/js/api.js"></script>
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/admin-nav.js"></script>
     <script>
         // Check authentication
         requireAuth();
@@ -461,6 +463,12 @@
                 if (user) {
                     updateUserDisplay(user);
                 }
+
+                // Also fetch fresh user data
+                const response = await window.api.getCurrentUser();
+                if (response.success) {
+                    updateUserDisplay(response.data);
+                }
             } catch (error) {
                 console.error('Error loading user info:', error);
             }
@@ -471,6 +479,9 @@
             document.getElementById('user-avatar').textContent = avatar;
             document.getElementById('user-name').textContent = user.username;
             document.getElementById('user-email').textContent = user.email;
+
+            // Show admin navigation if user is admin
+            addAdminNavigation(user);
         }
 
         // Drag and drop handlers

@@ -142,6 +142,7 @@
 
     <script src="/static/js/api.js"></script>
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/admin-nav.js"></script>
     <script>
         // Check authentication
         if (!requireAuth()) {
@@ -174,20 +175,7 @@
             document.getElementById('user-email').textContent = user.email;
 
             // Show admin panel link if user is admin
-            if (user.is_admin) {
-                const adminSection = document.getElementById('admin-nav-section');
-                adminSection.style.display = 'block';
-                adminSection.innerHTML = `
-                    <div style="height: 1px; background: rgba(255, 255, 255, 0.1); margin: 1rem 0;"></div>
-                    <div style="padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); letter-spacing: 0.05em;">
-                        Administración
-                    </div>
-                    <a href="/admin-dashboard.html" class="nav-item">
-                        <span class="icon">👑</span>
-                        <span>Panel de Admin</span>
-                    </a>
-                `;
-            }
+            addAdminNavigation(user);
         }
 
         // Load dashboard data

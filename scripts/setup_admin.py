@@ -32,18 +32,19 @@ def run_migration():
     try:
         # Execute the entire SQL file as a single block to respect transaction boundaries
         # The migration file contains BEGIN/COMMIT, so we use raw connection
-        with engine.raw_connection() as conn:
+        conn = engine.raw_connection()
+        try:
             cursor = conn.cursor()
             try:
                 cursor.execute(migration_sql)
-                conn.commit()
+                cursor.close()
                 print("✅ Migration completed successfully!")
                 return True
             except Exception as e:
                 conn.rollback()
                 raise e
-            finally:
-                cursor.close()
+        finally:
+            conn.close()
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         return False

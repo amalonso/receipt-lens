@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Analytics Global - Admin - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar (same structure as other admin pages) -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin-dashboard.html" class="sidebar-logo">👑 Admin Panel</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item"><span class="icon">📊</span><span>Mi Dashboard</span></a>
+                <div class="nav-separator"></div>
+                <div class="nav-section-title">Administración</div>
+                <a href="/admin-dashboard.html" class="nav-item"><span class="icon">👑</span><span>Dashboard Admin</span></a>
+                <a href="/admin-users.html" class="nav-item"><span class="icon">👥</span><span>Usuarios</span></a>
+                <a href="/admin-analytics.html" class="nav-item active"><span class="icon">📈</span><span>Analytics Global</span></a>
+                <a href="/admin-settings.html" class="nav-item"><span class="icon">⚙️</span><span>Configuración</span></a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">A</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Admin</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <main class="main-content">
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Analytics de Compras Global</h1>
+                </div>
+                <div class="topbar-actions">
+                    <select id="user-select" class="form-select" onchange="loadAnalytics()">
+                        <option value="aggregated">📊 Todos los usuarios (agregado)</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Charts Grid -->
+                <div class="grid grid-cols-2" style="margin-bottom: 2rem;">
+                    <div class="chart-container">
+                        <div class="chart-header"><h3 class="chart-title">Gasto Mensual</h3></div>
+                        <div class="chart-wrapper"><canvas id="monthly-chart"></canvas></div>
+                    </div>
+                    <div class="chart-container">
+                        <div class="chart-header"><h3 class="chart-title">Gasto por Categoría</h3></div>
+                        <div class="chart-wrapper"><canvas id="category-chart"></canvas></div>
+                    </div>
+                </div>
+
+                <!-- Tables -->
+                <div class="grid grid-cols-2" style="margin-bottom: 2rem;">
+                    <div class="card">
+                        <div class="card-header"><h3>Top Tiendas</h3></div>
+                        <div class="table-responsive">
+                            <table class="table"><tbody id="stores-tbody"><tr><td class="text-center"><div class="spinner"></div></td></tr></tbody></table>
+                        </div>
+                    </div>
+                    <div class="card">
+                        <div class="card-header"><h3>Top Productos</h3></div>
+                        <div class="table-responsive">
+                            <table class="table"><tbody id="products-tbody"><tr><td class="text-center"><div class="spinner"></div></td></tr></tbody></table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        const api = new APIClient();
+        let monthlyChart, categoryChart;
+        let allUsers = [];
+
+        async function checkAuth() {
+            if (!api.isAuthenticated()) { window.location.href = '/login.html'; return false; }
+            try {
+                const response = await api.request('/auth/me');
+                const user = response.data;
+                if (!user.is_admin) { alert('No tienes permisos de administrador'); window.location.href = '/dashboard.html'; return false; }
+                document.getElementById('user-name').textContent = user.username;
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
+                return true;
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+
+        async function loadUsers() {
+            try {
+                const response = await api.request('/admin/users?page=1&page_size=1000');
+                allUsers = response.users;
+                const select = document.getElementById('user-select');
+                allUsers.forEach(user => {
+                    const option = document.createElement('option');
+                    option.value = user.id;
+                    option.textContent = `${user.username} (${user.email})`;
+                    select.appendChild(option);
+                });
+            } catch (error) {
+                console.error('Error loading users:', error);
+            }
+        }
+
+        async function loadAnalytics() {
+            const userId = document.getElementById('user-select').value;
+
+            try {
+                let data;
+                if (userId === 'aggregated') {
+                    const response = await api.request('/admin/analytics/aggregated');
+                    data = response;
+                } else {
+                    const response = await api.request(`/admin/analytics/user/${userId}`);
+                    data = response;
+                }
+
+                renderCharts(data, userId === 'aggregated');
+                renderTables(data, userId === 'aggregated');
+            } catch (error) {
+                console.error('Error loading analytics:', error);
+                alert('Error al cargar analytics');
+            }
+        }
+
+        function renderCharts(data, isAggregated) {
+            // Monthly chart
+            const monthlyCtx = document.getElementById('monthly-chart').getContext('2d');
+            if (monthlyChart) monthlyChart.destroy();
+
+            monthlyChart = new Chart(monthlyCtx, {
+                type: 'line',
+                data: {
+                    labels: data.monthly_spending.map(m => `${m.year}-${String(m.month).padStart(2, '0')}`),
+                    datasets: [{
+                        label: 'Gasto Total',
+                        data: data.monthly_spending.map(m => m.total_amount),
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        tension: 0.4
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+
+            // Category chart
+            const categoryCtx = document.getElementById('category-chart').getContext('2d');
+            if (categoryChart) categoryChart.destroy();
+
+            categoryChart = new Chart(categoryCtx, {
+                type: 'doughnut',
+                data: {
+                    labels: data.category_spending.map(c => c.category),
+                    datasets: [{
+                        data: data.category_spending.map(c => c.total_spent),
+                        backgroundColor: ['#667eea', '#764ba2', '#f093fb', '#4facfe', '#00f2fe', '#43e97b', '#fa709a', '#fee140']
+                    }]
+                },
+                options: { responsive: true, maintainAspectRatio: false }
+            });
+        }
+
+        function renderTables(data, isAggregated) {
+            // Stores table
+            const storesTbody = document.getElementById('stores-tbody');
+            storesTbody.innerHTML = data.store_spending.map(s => `
+                <tr>
+                    <td><strong>${s.store_name}</strong><br>
+                    <small>${s.visit_count} visitas${isAggregated ? `, ${s.user_count} usuarios` : ''}</small></td>
+                    <td class="text-right"><strong>${formatCurrency(s.total_spent)}</strong><br>
+                    <small>Media: ${formatCurrency(s.avg_receipt)}</small></td>
+                </tr>
+            `).join('');
+
+            // Products table
+            const productsTbody = document.getElementById('products-tbody');
+            productsTbody.innerHTML = data.top_products.slice(0, 10).map(p => `
+                <tr>
+                    <td><strong>${p.product_name}</strong><br>
+                    <small>${p.category || 'Sin categoría'} · ${p.purchase_count} compras${isAggregated ? ` · ${p.buyer_count || ''} compradores` : ''}</small></td>
+                    <td class="text-right"><strong>${formatCurrency(p.total_spent)}</strong><br>
+                    <small>Precio medio: ${formatCurrency(p.avg_price)}</small></td>
+                </tr>
+            `).join('');
+        }
+
+        function handleLogout() { api.clearAuth(); window.location.href = '/login.html'; }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('show'); document.getElementById('sidebar-overlay').classList.toggle('show'); }
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        async function init() {
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) return;
+            await loadUsers();
+            await loadAnalytics();
+        }
+
+        init();
+    </script>
+
+    <style>
+        .nav-separator { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 1rem 0; }
+        .nav-section-title { padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); letter-spacing: 0.05em; }
+        .form-select { padding: 0.5rem 1rem; border: 1px solid #ddd; border-radius: 0.375rem; font-size: 0.875rem; background: white; max-width: 300px; }
+        .text-right { text-align: right; }
+    </style>
+</body>
+</html>

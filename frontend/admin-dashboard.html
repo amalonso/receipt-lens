@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin-dashboard.html" class="sidebar-logo">
+                    👑 Admin Panel
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Mi Dashboard</span>
+                </a>
+                <div class="nav-separator"></div>
+                <div class="nav-section-title">Administración</div>
+                <a href="/admin-dashboard.html" class="nav-item active">
+                    <span class="icon">👑</span>
+                    <span>Dashboard Admin</span>
+                </a>
+                <a href="/admin-users.html" class="nav-item">
+                    <span class="icon">👥</span>
+                    <span>Usuarios</span>
+                </a>
+                <a href="/admin-analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span>Analytics Global</span>
+                </a>
+                <a href="/admin-settings.html" class="nav-item">
+                    <span class="icon">⚙️</span>
+                    <span>Configuración</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">A</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Admin</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Dashboard de Administración</h1>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- System Stats Grid -->
+                <div class="stats-grid" id="system-stats">
+                    <div class="card">
+                        <div class="flex items-center justify-center" style="padding: 2rem;">
+                            <div class="spinner"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Charts Row -->
+                <div class="grid grid-cols-2" style="margin-bottom: 2rem;">
+                    <!-- User Growth Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Crecimiento de Usuarios</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="user-growth-chart"></canvas>
+                        </div>
+                    </div>
+
+                    <!-- API Costs Chart -->
+                    <div class="chart-container">
+                        <div class="chart-header">
+                            <h3 class="chart-title">Costes de API</h3>
+                        </div>
+                        <div class="chart-wrapper">
+                            <canvas id="api-costs-chart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Usage Analytics Table -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <div class="card-header">
+                        <h3>Análisis de Uso por Usuario</h3>
+                        <div>
+                            <select id="group-by-select" class="form-select" onchange="loadUsageAnalytics()">
+                                <option value="month" selected>Mensual</option>
+                                <option value="week">Semanal</option>
+                                <option value="day">Diario</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table" id="usage-table">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Período</th>
+                                    <th>Facturas</th>
+                                    <th>Items</th>
+                                    <th>Gasto Total</th>
+                                    <th>API Calls</th>
+                                    <th>Coste API</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usage-tbody">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer">
+                        <div id="usage-summary"></div>
+                    </div>
+                </div>
+
+                <!-- Recent Activity -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Actividad Reciente</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Hora</th>
+                                    <th>Usuario</th>
+                                    <th>Acción</th>
+                                    <th>Detalles</th>
+                                </tr>
+                            </thead>
+                            <tbody id="activity-tbody">
+                                <tr>
+                                    <td colspan="4" class="text-center">
+                                        <div class="spinner"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        const api = new APIClient();
+
+        // Check authentication and admin status
+        async function checkAuth() {
+            if (!api.isAuthenticated()) {
+                window.location.href = '/login.html';
+                return false;
+            }
+
+            try {
+                const response = await api.request('/auth/me');
+                const user = response.data;
+
+                if (!user.is_admin) {
+                    alert('No tienes permisos de administrador');
+                    window.location.href = '/dashboard.html';
+                    return false;
+                }
+
+                document.getElementById('user-name').textContent = user.username;
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
+
+                return true;
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+
+        // Load system dashboard
+        async function loadSystemDashboard() {
+            try {
+                const response = await api.request('/admin/dashboard');
+                const data = response;
+
+                const statsHtml = `
+                    <div class="stat-card">
+                        <div class="stat-icon">👥</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Usuarios</div>
+                            <div class="stat-value">${data.users.total}</div>
+                            <div class="stat-sublabel">${data.users.active} activos, ${data.users.new_24h} nuevos (24h)</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🧾</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Total Facturas</div>
+                            <div class="stat-value">${data.receipts.total}</div>
+                            <div class="stat-sublabel">${data.receipts.processed} procesadas, ${data.receipts.new_24h} nuevas (24h)</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">💰</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Gasto Total</div>
+                            <div class="stat-value">${formatCurrency(data.spending.total)}</div>
+                            <div class="stat-sublabel">Media: ${formatCurrency(data.spending.avg_per_receipt)}/factura</div>
+                        </div>
+                    </div>
+                    <div class="stat-card">
+                        <div class="stat-icon">🤖</div>
+                        <div class="stat-content">
+                            <div class="stat-label">Coste API</div>
+                            <div class="stat-value">$${data.api.total_cost.toFixed(2)}</div>
+                            <div class="stat-sublabel">${data.api.total_calls} llamadas, $${data.api.cost_7d.toFixed(2)} (7d)</div>
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('system-stats').innerHTML = statsHtml;
+            } catch (error) {
+                console.error('Error loading system dashboard:', error);
+                showError('Error al cargar el dashboard');
+            }
+        }
+
+        // Load usage analytics
+        async function loadUsageAnalytics() {
+            const groupBy = document.getElementById('group-by-select').value;
+
+            try {
+                const response = await api.request(`/admin/usage-analytics?group_by=${groupBy}`);
+                const { data, summary } = response;
+
+                const tbody = document.getElementById('usage-tbody');
+
+                if (data.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No hay datos disponibles</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = data.map(row => `
+                    <tr>
+                        <td>
+                            <strong>${row.username}</strong><br>
+                            <small class="text-muted">${row.email}</small>
+                        </td>
+                        <td>${formatDate(row.period)}</td>
+                        <td>${row.receipts_count}</td>
+                        <td>${row.items_count}</td>
+                        <td>${formatCurrency(row.total_spending)}</td>
+                        <td>${row.api_calls}</td>
+                        <td>$${row.api_cost.toFixed(2)}</td>
+                    </tr>
+                `).join('');
+
+                // Show summary
+                document.getElementById('usage-summary').innerHTML = `
+                    <strong>Totales:</strong>
+                    ${summary.total_receipts} facturas |
+                    ${formatCurrency(summary.total_spending)} gasto |
+                    ${summary.total_api_calls} llamadas API |
+                    $${summary.total_api_cost.toFixed(2)} coste API
+                `;
+            } catch (error) {
+                console.error('Error loading usage analytics:', error);
+                showError('Error al cargar análisis de uso');
+            }
+        }
+
+        // Load activity logs
+        async function loadActivityLogs() {
+            try {
+                const response = await api.request('/admin/activity-logs?page=1&page_size=20');
+                const { logs } = response;
+
+                const tbody = document.getElementById('activity-tbody');
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No hay actividad reciente</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = logs.map(log => `
+                    <tr>
+                        <td>${formatDateTime(log.created_at)}</td>
+                        <td>${log.username || 'Sistema'}</td>
+                        <td><span class="badge">${log.action}</span></td>
+                        <td>${formatLogDetails(log)}</td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading activity logs:', error);
+            }
+        }
+
+        // Helper: format log details
+        function formatLogDetails(log) {
+            if (!log.details) return '-';
+
+            if (typeof log.details === 'string') {
+                return log.details;
+            }
+
+            return Object.entries(log.details)
+                .map(([key, value]) => `${key}: ${value}`)
+                .join(', ');
+        }
+
+        // Handle logout
+        function handleLogout() {
+            api.clearAuth();
+            window.location.href = '/login.html';
+        }
+
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        // Close sidebar when clicking overlay
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Show error message
+        function showError(message) {
+            alert(message);
+        }
+
+        // Initialize page
+        async function init() {
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) return;
+
+            await Promise.all([
+                loadSystemDashboard(),
+                loadUsageAnalytics(),
+                loadActivityLogs()
+            ]);
+        }
+
+        // Run initialization when page loads
+        init();
+    </script>
+
+    <style>
+        .nav-separator {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 1rem 0;
+        }
+
+        .nav-section-title {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.05em;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .form-select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+            background: white;
+            cursor: pointer;
+        }
+
+        .card-footer {
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+            background: #f9fafb;
+            font-size: 0.875rem;
+        }
+    </style>
+</body>
+</html>

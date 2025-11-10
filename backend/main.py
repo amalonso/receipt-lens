@@ -236,10 +236,12 @@ async def health_check():
 from backend.auth.router import router as auth_router
 from backend.receipts.router import router as receipts_router
 from backend.analytics.router import router as analytics_router
+from backend.admin.router import router as admin_router
 
 app.include_router(auth_router, prefix="/api/auth", tags=["Authentication"])
 app.include_router(receipts_router, prefix="/api/receipts", tags=["Receipts"])
 app.include_router(analytics_router, prefix="/api/analytics", tags=["Analytics"])
+app.include_router(admin_router)  # Admin router includes its own prefix
 
 # Mount static files for frontend
 app.mount("/static", StaticFiles(directory="frontend/static"), name="static")

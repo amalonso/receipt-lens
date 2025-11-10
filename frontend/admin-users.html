@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gestión de Usuarios - Admin - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin-dashboard.html" class="sidebar-logo">
+                    👑 Admin Panel
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item">
+                    <span class="icon">📊</span>
+                    <span>Mi Dashboard</span>
+                </a>
+                <div class="nav-separator"></div>
+                <div class="nav-section-title">Administración</div>
+                <a href="/admin-dashboard.html" class="nav-item">
+                    <span class="icon">👑</span>
+                    <span>Dashboard Admin</span>
+                </a>
+                <a href="/admin-users.html" class="nav-item active">
+                    <span class="icon">👥</span>
+                    <span>Usuarios</span>
+                </a>
+                <a href="/admin-analytics.html" class="nav-item">
+                    <span class="icon">📈</span>
+                    <span>Analytics Global</span>
+                </a>
+                <a href="/admin-settings.html" class="nav-item">
+                    <span class="icon">⚙️</span>
+                    <span>Configuración</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">A</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Admin</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">
+                    Cerrar Sesión
+                </button>
+            </div>
+        </aside>
+
+        <!-- Sidebar Overlay for Mobile -->
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <!-- Top Bar -->
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Gestión de Usuarios</h1>
+                </div>
+            </div>
+
+            <!-- Content Area -->
+            <div class="content-area">
+                <!-- Filters -->
+                <div class="card" style="margin-bottom: 1.5rem;">
+                    <div class="card-body">
+                        <div class="flex items-center gap-3">
+                            <input
+                                type="text"
+                                id="search-input"
+                                class="form-input flex-1"
+                                placeholder="Buscar por nombre o email..."
+                                onkeyup="debounceSearch()"
+                            >
+                            <select id="filter-status" class="form-select" onchange="loadUsers()">
+                                <option value="">Todos los estados</option>
+                                <option value="active">Activos</option>
+                                <option value="inactive">Inactivos</option>
+                            </select>
+                            <select id="filter-role" class="form-select" onchange="loadUsers()">
+                                <option value="">Todos los roles</option>
+                                <option value="admin">Administradores</option>
+                                <option value="user">Usuarios</option>
+                            </select>
+                            <select id="sort-by" class="form-select" onchange="loadUsers()">
+                                <option value="created_at">Fecha registro</option>
+                                <option value="username">Nombre usuario</option>
+                                <option value="last_login">Último login</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Users Table -->
+                <div class="card">
+                    <div class="card-header">
+                        <h3>Usuarios del Sistema</h3>
+                        <div id="total-users">Cargando...</div>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Usuario</th>
+                                    <th>Estado</th>
+                                    <th>Rol</th>
+                                    <th>Último Login</th>
+                                    <th>Estadísticas</th>
+                                    <th>Coste API</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody id="users-tbody">
+                                <tr>
+                                    <td colspan="7" class="text-center">
+                                        <div class="spinner"></div>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="card-footer">
+                        <div class="pagination" id="pagination"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- User Details Modal -->
+    <div id="user-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 id="modal-title">Detalles del Usuario</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body" id="modal-body">
+                <!-- User details will be loaded here -->
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        const api = new APIClient();
+        let currentPage = 1;
+        const pageSize = 20;
+        let searchTimeout;
+
+        // Check authentication and admin status
+        async function checkAuth() {
+            if (!api.isAuthenticated()) {
+                window.location.href = '/login.html';
+                return false;
+            }
+
+            try {
+                const response = await api.request('/auth/me');
+                const user = response.data;
+
+                if (!user.is_admin) {
+                    alert('No tienes permisos de administrador');
+                    window.location.href = '/dashboard.html';
+                    return false;
+                }
+
+                document.getElementById('user-name').textContent = user.username;
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
+
+                return true;
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+
+        // Load users with filters
+        async function loadUsers(page = 1) {
+            currentPage = page;
+
+            const search = document.getElementById('search-input').value;
+            const status = document.getElementById('filter-status').value;
+            const role = document.getElementById('filter-role').value;
+            const sortBy = document.getElementById('sort-by').value;
+
+            let url = `/admin/users?page=${page}&page_size=${pageSize}&sort_by=${sortBy}&sort_order=desc`;
+
+            if (search) url += `&search=${encodeURIComponent(search)}`;
+            if (status) url += `&is_active=${status === 'active'}`;
+            if (role) url += `&is_admin=${role === 'admin'}`;
+
+            try {
+                const response = await api.request(url);
+                const { users, total } = response;
+
+                const tbody = document.getElementById('users-tbody');
+
+                if (users.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" class="text-center">No se encontraron usuarios</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = users.map(user => `
+                    <tr>
+                        <td>
+                            <div class="user-cell">
+                                <div class="user-avatar-sm">${user.username.charAt(0).toUpperCase()}</div>
+                                <div>
+                                    <strong>${user.username}</strong><br>
+                                    <small class="text-muted">${user.email}</small><br>
+                                    <small class="text-muted">Registro: ${formatDate(user.created_at)}</small>
+                                </div>
+                            </div>
+                        </td>
+                        <td>
+                            <span class="status-badge ${user.is_active ? 'status-active' : 'status-inactive'}">
+                                ${user.is_active ? '✓ Activo' : '✗ Inactivo'}
+                            </span>
+                        </td>
+                        <td>
+                            <span class="role-badge ${user.is_admin ? 'role-admin' : 'role-user'}">
+                                ${user.is_admin ? '👑 Admin' : '👤 Usuario'}
+                            </span>
+                        </td>
+                        <td>${user.last_login ? formatDateTime(user.last_login) : 'Nunca'}</td>
+                        <td>
+                            <small>
+                                <strong>${user.total_receipts}</strong> facturas<br>
+                                <strong>${formatCurrency(user.total_spending)}</strong> gastado<br>
+                                <strong>${user.unique_stores}</strong> tiendas
+                            </small>
+                        </td>
+                        <td>
+                            <small>
+                                <strong>${user.total_api_calls}</strong> llamadas<br>
+                                <strong>$${user.total_api_cost.toFixed(2)}</strong>
+                            </small>
+                        </td>
+                        <td>
+                            <div class="btn-group-sm">
+                                <button
+                                    class="btn btn-sm ${user.is_active ? 'btn-warning' : 'btn-success'}"
+                                    onclick="toggleUserActive(${user.id}, '${user.username}', ${user.is_active})"
+                                    title="${user.is_active ? 'Desactivar' : 'Activar'}"
+                                >
+                                    ${user.is_active ? '🔒' : '🔓'}
+                                </button>
+                                <button
+                                    class="btn btn-sm btn-primary"
+                                    onclick="toggleUserAdmin(${user.id}, '${user.username}', ${user.is_admin})"
+                                    title="${user.is_admin ? 'Quitar admin' : 'Hacer admin'}"
+                                >
+                                    ${user.is_admin ? '👤' : '👑'}
+                                </button>
+                                <button
+                                    class="btn btn-sm btn-info"
+                                    onclick="viewUserDetails(${user.id})"
+                                    title="Ver detalles"
+                                >
+                                    👁️
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                `).join('');
+
+                // Update pagination
+                document.getElementById('total-users').textContent = `${total} usuarios`;
+                renderPagination(total, page, pageSize);
+            } catch (error) {
+                console.error('Error loading users:', error);
+                showError('Error al cargar usuarios');
+            }
+        }
+
+        // Toggle user active status
+        async function toggleUserActive(userId, username, currentStatus) {
+            const action = currentStatus ? 'desactivar' : 'activar';
+            if (!confirm(`¿Estás seguro de que quieres ${action} al usuario ${username}?`)) {
+                return;
+            }
+
+            try {
+                await api.request(`/admin/users/${userId}/toggle-active`, { method: 'PATCH' });
+                showSuccess(`Usuario ${action}do exitosamente`);
+                loadUsers(currentPage);
+            } catch (error) {
+                console.error('Error toggling user status:', error);
+                showError(error.message || 'Error al cambiar el estado del usuario');
+            }
+        }
+
+        // Toggle user admin status
+        async function toggleUserAdmin(userId, username, isAdmin) {
+            const action = isAdmin ? 'quitar privilegios de administrador a' : 'hacer administrador a';
+            if (!confirm(`¿Estás seguro de que quieres ${action} ${username}?`)) {
+                return;
+            }
+
+            try {
+                await api.request(`/admin/users/${userId}/toggle-admin`, { method: 'PATCH' });
+                showSuccess(`Rol actualizado exitosamente`);
+                loadUsers(currentPage);
+            } catch (error) {
+                console.error('Error toggling user admin:', error);
+                showError(error.message || 'Error al cambiar el rol del usuario');
+            }
+        }
+
+        // View user details
+        async function viewUserDetails(userId) {
+            try {
+                const response = await api.request(`/admin/analytics/user/${userId}`);
+                const { user, monthly_spending, category_spending, store_spending, top_products } = response;
+
+                const modalBody = document.getElementById('modal-body');
+                modalBody.innerHTML = `
+                    <div class="user-details">
+                        <h4>${user.username}</h4>
+                        <p><strong>Email:</strong> ${user.email}</p>
+                        <p><strong>Estado:</strong> ${user.is_active ? 'Activo' : 'Inactivo'}</p>
+                        <p><strong>Rol:</strong> ${user.is_admin ? 'Administrador' : 'Usuario'}</p>
+                        <p><strong>Registro:</strong> ${formatDate(user.created_at)}</p>
+                        <p><strong>Último login:</strong> ${user.last_login ? formatDateTime(user.last_login) : 'Nunca'}</p>
+
+                        <h5>Gasto Mensual</h5>
+                        <div class="detail-table">
+                            ${monthly_spending.slice(0, 6).map(m => `
+                                <div>${m.year}-${String(m.month).padStart(2, '0')}: ${formatCurrency(m.total_amount)} (${m.receipt_count} facturas)</div>
+                            `).join('')}
+                        </div>
+
+                        <h5>Gasto por Categoría</h5>
+                        <div class="detail-table">
+                            ${category_spending.slice(0, 5).map(c => `
+                                <div>${c.category}: ${formatCurrency(c.total_spent)} (${c.item_count} items)</div>
+                            `).join('')}
+                        </div>
+
+                        <h5>Tiendas Favoritas</h5>
+                        <div class="detail-table">
+                            ${store_spending.slice(0, 5).map(s => `
+                                <div>${s.store_name}: ${s.visit_count} visitas, ${formatCurrency(s.total_spent)}</div>
+                            `).join('')}
+                        </div>
+                    </div>
+                `;
+
+                document.getElementById('modal-title').textContent = `Detalles de ${user.username}`;
+                document.getElementById('user-modal').style.display = 'flex';
+            } catch (error) {
+                console.error('Error loading user details:', error);
+                showError('Error al cargar detalles del usuario');
+            }
+        }
+
+        // Close modal
+        function closeModal() {
+            document.getElementById('user-modal').style.display = 'none';
+        }
+
+        // Render pagination
+        function renderPagination(total, currentPage, pageSize) {
+            const totalPages = Math.ceil(total / pageSize);
+            const pagination = document.getElementById('pagination');
+
+            if (totalPages <= 1) {
+                pagination.innerHTML = '';
+                return;
+            }
+
+            let html = '';
+
+            // Previous button
+            html += `<button class="btn btn-sm" onclick="loadUsers(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Anterior</button>`;
+
+            // Page numbers
+            for (let i = 1; i <= totalPages; i++) {
+                if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+                    html += `<button class="btn btn-sm ${i === currentPage ? 'btn-primary' : ''}" onclick="loadUsers(${i})">${i}</button>`;
+                } else if (i === currentPage - 3 || i === currentPage + 3) {
+                    html += '<span>...</span>';
+                }
+            }
+
+            // Next button
+            html += `<button class="btn btn-sm" onclick="loadUsers(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Siguiente</button>`;
+
+            pagination.innerHTML = html;
+        }
+
+        // Debounce search
+        function debounceSearch() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => loadUsers(1), 500);
+        }
+
+        // Handle logout
+        function handleLogout() {
+            api.clearAuth();
+            window.location.href = '/login.html';
+        }
+
+        // Toggle sidebar
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebar-overlay');
+            sidebar.classList.toggle('show');
+            overlay.classList.toggle('show');
+        }
+
+        // Close sidebar when clicking overlay
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        // Show messages
+        function showError(message) {
+            alert('Error: ' + message);
+        }
+
+        function showSuccess(message) {
+            alert(message);
+        }
+
+        // Initialize page
+        async function init() {
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) return;
+
+            loadUsers(1);
+        }
+
+        // Run initialization when page loads
+        init();
+    </script>
+
+    <style>
+        .nav-separator {
+            height: 1px;
+            background: rgba(255, 255, 255, 0.1);
+            margin: 1rem 0;
+        }
+
+        .nav-section-title {
+            padding: 0.5rem 1rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            color: rgba(255, 255, 255, 0.5);
+            letter-spacing: 0.05em;
+        }
+
+        .form-input, .form-select {
+            padding: 0.5rem 1rem;
+            border: 1px solid #ddd;
+            border-radius: 0.375rem;
+            font-size: 0.875rem;
+        }
+
+        .user-cell {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .user-avatar-sm {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status-inactive {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .role-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .role-admin {
+            background: #fff3cd;
+            color: #856404;
+        }
+
+        .role-user {
+            background: #e3f2fd;
+            color: #1976d2;
+        }
+
+        .btn-group-sm {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 0.5rem;
+            width: 90%;
+            max-width: 600px;
+            max-height: 80vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            padding: 1rem;
+            border-bottom: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: #666;
+        }
+
+        .modal-body {
+            padding: 1rem;
+        }
+
+        .user-details h4, .user-details h5 {
+            margin-top: 1rem;
+        }
+
+        .detail-table {
+            margin: 0.5rem 0;
+            padding-left: 1rem;
+        }
+
+        .detail-table > div {
+            padding: 0.25rem 0;
+            border-bottom: 1px solid #eee;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+        }
+
+        .pagination button {
+            min-width: 40px;
+        }
+
+        .card-footer {
+            padding: 1rem;
+            border-top: 1px solid #e5e7eb;
+            display: flex;
+            justify-content: center;
+        }
+    </style>
+</body>
+</html>

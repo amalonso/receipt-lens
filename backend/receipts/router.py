@@ -62,11 +62,26 @@ async def upload_receipt(
             file
         )
 
+        # Get items count
+        items_count = receipt.items.count()
+
+        # Create response with items count
+        receipt_data = ReceiptUploadResponse(
+            id=receipt.id,
+            store_name=receipt.store_name,
+            purchase_date=receipt.purchase_date,
+            total_amount=float(receipt.total_amount),
+            image_path=receipt.image_path,
+            processed=receipt.processed,
+            created_at=receipt.created_at,
+            items_count=items_count
+        )
+
         return {
             "success": True,
             "data": {
-                "receipt": ReceiptUploadResponse.from_orm(receipt).dict(),
-                "message": f"Receipt uploaded and analyzed successfully. {len(receipt.items.all())} items extracted."
+                "receipt": receipt_data.dict(),
+                "message": f"Receipt uploaded and analyzed successfully. {items_count} items extracted."
             },
             "error": None
         }

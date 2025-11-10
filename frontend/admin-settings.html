@@ -1,0 +1,354 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Configuración del Sistema - Admin - Receipt Lens</title>
+    <link rel="stylesheet" href="/static/css/main.css">
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+</head>
+<body>
+    <div class="dashboard-wrapper">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/admin-dashboard.html" class="sidebar-logo">👑 Admin Panel</a>
+            </div>
+            <nav class="sidebar-nav">
+                <a href="/dashboard.html" class="nav-item"><span class="icon">📊</span><span>Mi Dashboard</span></a>
+                <div class="nav-separator"></div>
+                <div class="nav-section-title">Administración</div>
+                <a href="/admin-dashboard.html" class="nav-item"><span class="icon">👑</span><span>Dashboard Admin</span></a>
+                <a href="/admin-users.html" class="nav-item"><span class="icon">👥</span><span>Usuarios</span></a>
+                <a href="/admin-analytics.html" class="nav-item"><span class="icon">📈</span><span>Analytics Global</span></a>
+                <a href="/admin-settings.html" class="nav-item active"><span class="icon">⚙️</span><span>Configuración</span></a>
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-info" id="user-info">
+                    <div class="user-avatar" id="user-avatar">A</div>
+                    <div class="user-details">
+                        <div class="user-name" id="user-name">Admin</div>
+                        <div class="user-email" id="user-email"></div>
+                    </div>
+                </div>
+                <button class="btn btn-danger btn-block btn-sm" onclick="handleLogout()">Cerrar Sesión</button>
+            </div>
+        </aside>
+
+        <div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+        <main class="main-content">
+            <div class="topbar">
+                <div class="flex items-center gap-4">
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <h1>Configuración del Sistema</h1>
+                </div>
+            </div>
+
+            <div class="content-area">
+                <!-- Warning Banner -->
+                <div class="alert alert-warning" style="margin-bottom: 1.5rem;">
+                    ⚠️ <strong>Atención:</strong> Modificar estos parámetros puede afectar el funcionamiento del sistema. Los cambios se aplican inmediatamente.
+                </div>
+
+                <!-- Configuration Categories -->
+                <div class="grid grid-cols-1" style="gap: 1.5rem;">
+                    <!-- Vision Provider -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🤖 Configuración de Visión / AI</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="vision-config" class="config-section">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Upload Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>📤 Configuración de Subida de Archivos</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="upload-config" class="config-section">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Security Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>🔒 Configuración de Seguridad</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="security-config" class="config-section">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- General Settings -->
+                    <div class="card">
+                        <div class="card-header">
+                            <h3>⚙️ Configuración General</h3>
+                        </div>
+                        <div class="card-body">
+                            <div id="general-config" class="config-section">
+                                <div class="spinner"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Activity Log -->
+                <div class="card" style="margin-top: 2rem;">
+                    <div class="card-header">
+                        <h3>📋 Log de Cambios de Configuración</h3>
+                    </div>
+                    <div class="table-responsive">
+                        <table class="table">
+                            <thead>
+                                <tr>
+                                    <th>Fecha</th>
+                                    <th>Usuario</th>
+                                    <th>Configuración</th>
+                                    <th>Cambio</th>
+                                </tr>
+                            </thead>
+                            <tbody id="config-logs-tbody">
+                                <tr><td colspan="4" class="text-center"><div class="spinner"></div></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Config Modal -->
+    <div id="edit-modal" class="modal">
+        <div class="modal-content" style="max-width: 500px;">
+            <div class="modal-header">
+                <h3 id="modal-title">Editar Configuración</h3>
+                <button class="modal-close" onclick="closeModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="edit-form" onsubmit="saveConfig(event)">
+                    <div class="form-group">
+                        <label id="modal-label">Valor:</label>
+                        <input type="text" id="modal-input" class="form-control" required>
+                        <small id="modal-description" class="form-text text-muted"></small>
+                    </div>
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancelar</button>
+                        <button type="submit" class="btn btn-primary">Guardar</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/api.js"></script>
+    <script src="/static/js/utils.js"></script>
+    <script>
+        const api = new APIClient();
+        let allConfigs = [];
+        let currentEditKey = null;
+
+        async function checkAuth() {
+            if (!api.isAuthenticated()) { window.location.href = '/login.html'; return false; }
+            try {
+                const response = await api.request('/auth/me');
+                const user = response.data;
+                if (!user.is_admin) { alert('No tienes permisos de administrador'); window.location.href = '/dashboard.html'; return false; }
+                document.getElementById('user-name').textContent = user.username;
+                document.getElementById('user-email').textContent = user.email;
+                document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
+                return true;
+            } catch (error) {
+                console.error('Auth check failed:', error);
+                window.location.href = '/login.html';
+                return false;
+            }
+        }
+
+        async function loadConfig() {
+            try {
+                const response = await api.request('/admin/config?include_sensitive=true');
+                allConfigs = response.data;
+
+                // Group by category
+                const byCategory = {
+                    vision: allConfigs.filter(c => c.category === 'vision'),
+                    upload: allConfigs.filter(c => c.category === 'upload'),
+                    security: allConfigs.filter(c => c.category === 'security'),
+                    general: allConfigs.filter(c => c.category === 'general')
+                };
+
+                renderConfigSection('vision-config', byCategory.vision);
+                renderConfigSection('upload-config', byCategory.upload);
+                renderConfigSection('security-config', byCategory.security);
+                renderConfigSection('general-config', byCategory.general);
+            } catch (error) {
+                console.error('Error loading config:', error);
+                alert('Error al cargar configuración');
+            }
+        }
+
+        function renderConfigSection(elementId, configs) {
+            const element = document.getElementById(elementId);
+
+            if (configs.length === 0) {
+                element.innerHTML = '<p class="text-muted">No hay configuraciones en esta sección</p>';
+                return;
+            }
+
+            element.innerHTML = configs.map(config => `
+                <div class="config-item">
+                    <div class="config-info">
+                        <div class="config-key">${config.config_key}</div>
+                        <div class="config-description">${config.description || 'Sin descripción'}</div>
+                        <div class="config-value">
+                            <strong>Valor actual:</strong>
+                            <code>${config.is_sensitive && config.config_value === '***HIDDEN***' ? '(valor oculto)' : config.config_value}</code>
+                            <span class="config-type">(${config.value_type})</span>
+                        </div>
+                    </div>
+                    <div class="config-actions">
+                        <button class="btn btn-sm btn-primary" onclick="editConfig('${config.config_key}')">
+                            ✏️ Editar
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function editConfig(configKey) {
+            const config = allConfigs.find(c => c.config_key === configKey);
+            if (!config) return;
+
+            currentEditKey = configKey;
+            document.getElementById('modal-title').textContent = `Editar: ${config.config_key}`;
+            document.getElementById('modal-label').textContent = 'Nuevo valor:';
+            document.getElementById('modal-input').value = config.is_sensitive && config.config_value === '***HIDDEN***' ? '' : config.config_value;
+            document.getElementById('modal-description').textContent = config.description || '';
+
+            // Change input type based on value type
+            const input = document.getElementById('modal-input');
+            if (config.value_type === 'boolean') {
+                input.type = 'checkbox';
+                input.checked = config.config_value === 'true';
+            } else if (config.value_type === 'integer') {
+                input.type = 'number';
+            } else {
+                input.type = 'text';
+            }
+
+            document.getElementById('edit-modal').style.display = 'flex';
+        }
+
+        async function saveConfig(event) {
+            event.preventDefault();
+
+            const config = allConfigs.find(c => c.config_key === currentEditKey);
+            const input = document.getElementById('modal-input');
+            let newValue;
+
+            if (config.value_type === 'boolean') {
+                newValue = input.checked ? 'true' : 'false';
+            } else {
+                newValue = input.value;
+            }
+
+            try {
+                await api.request(`/admin/config/${currentEditKey}`, {
+                    method: 'PATCH',
+                    body: { config_value: newValue }
+                });
+
+                alert('Configuración actualizada exitosamente');
+                closeModal();
+                await loadConfig();
+                await loadConfigLogs();
+            } catch (error) {
+                console.error('Error saving config:', error);
+                alert('Error al guardar configuración: ' + error.message);
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('edit-modal').style.display = 'none';
+            currentEditKey = null;
+        }
+
+        async function loadConfigLogs() {
+            try {
+                const response = await api.request('/admin/activity-logs?action=config_updated&page=1&page_size=20');
+                const { logs } = response;
+
+                const tbody = document.getElementById('config-logs-tbody');
+
+                if (logs.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="4" class="text-center">No hay cambios recientes</td></tr>';
+                    return;
+                }
+
+                tbody.innerHTML = logs.map(log => `
+                    <tr>
+                        <td>${formatDateTime(log.created_at)}</td>
+                        <td>${log.username || 'Sistema'}</td>
+                        <td><code>${log.details?.config_key || '-'}</code></td>
+                        <td><small>${log.details?.old_value || '-'} → ${log.details?.new_value || '-'}</small></td>
+                    </tr>
+                `).join('');
+            } catch (error) {
+                console.error('Error loading config logs:', error);
+            }
+        }
+
+        function handleLogout() { api.clearAuth(); window.location.href = '/login.html'; }
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('show'); document.getElementById('sidebar-overlay').classList.toggle('show'); }
+        document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
+
+        async function init() {
+            const isAuthenticated = await checkAuth();
+            if (!isAuthenticated) return;
+            await Promise.all([loadConfig(), loadConfigLogs()]);
+        }
+
+        init();
+    </script>
+
+    <style>
+        .nav-separator { height: 1px; background: rgba(255, 255, 255, 0.1); margin: 1rem 0; }
+        .nav-section-title { padding: 0.5rem 1rem; font-size: 0.75rem; font-weight: 600; text-transform: uppercase; color: rgba(255, 255, 255, 0.5); letter-spacing: 0.05em; }
+
+        .alert { padding: 1rem; border-radius: 0.5rem; border: 1px solid; }
+        .alert-warning { background: #fff3cd; border-color: #ffc107; color: #856404; }
+
+        .config-section { display: flex; flex-direction: column; gap: 1rem; }
+        .config-item { display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: #f9fafb; border-radius: 0.5rem; border: 1px solid #e5e7eb; }
+        .config-info { flex: 1; }
+        .config-key { font-weight: 600; font-size: 0.875rem; color: #1f2937; font-family: monospace; }
+        .config-description { font-size: 0.75rem; color: #6b7280; margin-top: 0.25rem; }
+        .config-value { font-size: 0.875rem; margin-top: 0.5rem; }
+        .config-value code { background: white; padding: 0.25rem 0.5rem; border-radius: 0.25rem; border: 1px solid #e5e7eb; }
+        .config-type { color: #6b7280; font-size: 0.75rem; margin-left: 0.5rem; }
+        .config-actions { display: flex; gap: 0.5rem; }
+
+        .modal { display: none; position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.5); align-items: center; justify-content: center; z-index: 1000; }
+        .modal-content { background: white; border-radius: 0.5rem; max-height: 80vh; overflow-y: auto; }
+        .modal-header { padding: 1rem; border-bottom: 1px solid #e5e7eb; display: flex; justify-content: space-between; align-items: center; }
+        .modal-close { background: none; border: none; font-size: 1.5rem; cursor: pointer; color: #666; }
+        .modal-body { padding: 1rem; }
+
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: 500; }
+        .form-control { width: 100%; padding: 0.5rem; border: 1px solid #ddd; border-radius: 0.375rem; }
+        .form-text { display: block; margin-top: 0.25rem; font-size: 0.875rem; }
+        .form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+    </style>
+</body>
+</html>

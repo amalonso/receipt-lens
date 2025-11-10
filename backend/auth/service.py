@@ -202,7 +202,7 @@ class AuthService:
             tuple: (User object, TokenResponse)
 
         Raises:
-            HTTPException: If credentials are invalid
+            HTTPException: If credentials are invalid or user is inactive
         """
         logger.info(f"Login attempt for: {login_data.username}")
 
@@ -219,6 +219,14 @@ class AuthService:
                 detail="Incorrect username or password"
             )
 
+        # Check if user is active
+        if not user.is_active:
+            logger.warning(f"Login failed: user '{login_data.username}' is inactive")
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Account is disabled. Please contact administrator."
+            )
+
         # Verify password
         if not AuthService.verify_password(login_data.password, user.password_hash):
             logger.warning(f"Login failed: invalid password for user '{login_data.username}'")
@@ -228,6 +236,10 @@ class AuthService:
             )
 
         logger.info(f"User logged in successfully: {user.username} (ID: {user.id})")
+
+        # Update last login timestamp
+        user.last_login = datetime.utcnow()
+        db.commit()
 
         # Generate JWT token
         access_token, expires_in = AuthService.create_access_token(user.id)

@@ -233,7 +233,7 @@
                 <div class="stat-card" style="border-left-color: var(--success-color);">
                     <div class="stat-header">
                         <div>
-                            <div class="stat-value">${data.total_receipts}</div>
+                            <div class="stat-value">${data.receipts_count}</div>
                             <div class="stat-label">Facturas</div>
                         </div>
                         <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);"><i data-lucide="receipt"></i></div>
@@ -243,7 +243,7 @@
                 <div class="stat-card" style="border-left-color: var(--info-color);">
                     <div class="stat-header">
                         <div>
-                            <div class="stat-value">${data.total_items}</div>
+                            <div class="stat-value">${data.items_count}</div>
                             <div class="stat-label">Productos</div>
                         </div>
                         <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);"><i data-lucide="shopping-cart"></i></div>
@@ -315,7 +315,7 @@
                                     <div>
                                         <h4 class="card-title">${storeName}</h4>
                                         <p class="card-subtitle">
-                                            ${storeData.total_receipts} visitas • ${formatCurrency(storeData.total_spent)} gastado
+                                            ${storeData.visit_count} visitas • ${formatCurrency(storeData.total_spent)} gastado
                                         </p>
                                     </div>
                                     <div style="text-align: right;">

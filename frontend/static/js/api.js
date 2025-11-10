@@ -281,6 +281,13 @@ class APIClient {
     }
 
     /**
+     * Get all-time summary (all receipts)
+     */
+    async getAllTimeSummary() {
+        return this.get('/analytics/all-time-summary');
+    }
+
+    /**
      * Get store comparison
      */
     async getStoreComparison(months = 6) {

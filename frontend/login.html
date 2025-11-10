@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login - Receipt Lens</title>
     <link rel="stylesheet" href="/static/css/main.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         body {
             min-height: 100vh;
@@ -104,7 +105,7 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="logo">
-                <h1>🧾 Receipt Lens</h1>
+                <h1><i data-lucide="receipt" style="width: 32px; height: 32px; vertical-align: middle;"></i> Receipt Lens</h1>
                 <p>Análisis inteligente de facturas con IA</p>
             </div>
 
@@ -351,6 +352,9 @@
                 submitBtn.textContent = 'Crear Cuenta';
             }
         });
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>

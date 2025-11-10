@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -15,29 +16,29 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <a href="/dashboard.html" class="sidebar-logo">
-                    🧾 Receipt Lens
+                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i> Receipt Lens
                 </a>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="/dashboard.html" class="nav-item active">
-                    <span class="icon">📊</span>
+                    <span class="icon"><i data-lucide="layout-dashboard"></i></span>
                     <span>Dashboard</span>
                 </a>
                 <a href="/upload.html" class="nav-item">
-                    <span class="icon">📤</span>
+                    <span class="icon"><i data-lucide="upload"></i></span>
                     <span>Subir Factura</span>
                 </a>
                 <a href="/receipts.html" class="nav-item">
-                    <span class="icon">🧾</span>
+                    <span class="icon"><i data-lucide="receipt"></i></span>
                     <span>Mis Facturas</span>
                 </a>
                 <a href="/analytics.html" class="nav-item">
-                    <span class="icon">📈</span>
+                    <span class="icon"><i data-lucide="trending-up"></i></span>
                     <span>Analytics</span>
                 </a>
                 <a href="/profile.html" class="nav-item">
-                    <span class="icon">👤</span>
+                    <span class="icon"><i data-lucide="user"></i></span>
                     <span>Perfil</span>
                 </a>
             </nav>
@@ -64,12 +65,12 @@
             <!-- Top Bar -->
             <div class="topbar">
                 <div class="flex items-center gap-4">
-                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                     <h1>Dashboard</h1>
                 </div>
                 <div class="topbar-actions">
                     <a href="/upload.html" class="btn btn-primary">
-                        📤 Subir Factura
+                        <i data-lucide="upload" style="width: 16px; height: 16px;"></i> Subir Factura
                     </a>
                 </div>
             </div>
@@ -211,9 +212,9 @@
                             <div class="stat-value">${formatCurrency(data.total_spent)}</div>
                             <div class="stat-label">Gasto Total</div>
                         </div>
-                        <div class="stat-icon">💰</div>
+                        <div class="stat-icon"><i data-lucide="dollar-sign"></i></div>
                     </div>
-                    <div class="stat-trend">📅 ${monthName}</div>
+                    <div class="stat-trend"><i data-lucide="calendar" style="width: 14px; height: 14px;"></i> ${monthName}</div>
                 </div>
 
                 <div class="stat-card" style="border-left-color: var(--success-color);">
@@ -222,9 +223,9 @@
                             <div class="stat-value">${data.receipts_count}</div>
                             <div class="stat-label">Facturas</div>
                         </div>
-                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">🧾</div>
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);"><i data-lucide="receipt"></i></div>
                     </div>
-                    <div class="stat-trend">📅 ${monthName}</div>
+                    <div class="stat-trend"><i data-lucide="calendar" style="width: 14px; height: 14px;"></i> ${monthName}</div>
                 </div>
 
                 <div class="stat-card" style="border-left-color: var(--info-color);">
@@ -233,9 +234,9 @@
                             <div class="stat-value">${data.items_count}</div>
                             <div class="stat-label">Productos</div>
                         </div>
-                        <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🛒</div>
+                        <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);"><i data-lucide="shopping-cart"></i></div>
                     </div>
-                    <div class="stat-trend">📅 ${monthName}</div>
+                    <div class="stat-trend"><i data-lucide="calendar" style="width: 14px; height: 14px;"></i> ${monthName}</div>
                 </div>
 
                 <div class="stat-card" style="border-left-color: var(--warning-color);">
@@ -244,11 +245,12 @@
                             <div class="stat-value">${formatCurrency(data.avg_receipt_amount)}</div>
                             <div class="stat-label">Promedio por Factura</div>
                         </div>
-                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">📊</div>
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);"><i data-lucide="bar-chart-2"></i></div>
                     </div>
-                    <div class="stat-trend">📅 ${monthName}</div>
+                    <div class="stat-trend"><i data-lucide="calendar" style="width: 14px; height: 14px;"></i> ${monthName}</div>
                 </div>
             `;
+            lucide.createIcons();
         }
 
         function renderCategoryChart(categories) {
@@ -325,12 +327,13 @@
             if (!receipts || receipts.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">🧾</div>
+                        <div class="empty-state-icon"><i data-lucide="receipt"></i></div>
                         <h3 class="empty-state-title">No hay facturas aún</h3>
                         <p class="empty-state-text">Sube tu primera factura para comenzar</p>
-                        <a href="/upload.html" class="btn btn-primary">📤 Subir Factura</a>
+                        <a href="/upload.html" class="btn btn-primary"><i data-lucide="upload" style="width: 16px; height: 16px;"></i> Subir Factura</a>
                     </div>
                 `;
+                lucide.createIcons();
                 return;
             }
 
@@ -367,6 +370,9 @@
         // Initialize
         loadUserInfo();
         loadDashboard();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>

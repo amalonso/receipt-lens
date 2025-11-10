@@ -6,6 +6,7 @@
     <title>Perfil - Receipt Lens</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -13,29 +14,29 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <a href="/dashboard.html" class="sidebar-logo">
-                    🧾 Receipt Lens
+                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i> Receipt Lens
                 </a>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="/dashboard.html" class="nav-item">
-                    <span class="icon">📊</span>
+                    <span class="icon"><i data-lucide="layout-dashboard"></i></span>
                     <span>Dashboard</span>
                 </a>
                 <a href="/upload.html" class="nav-item">
-                    <span class="icon">📤</span>
+                    <span class="icon"><i data-lucide="upload"></i></span>
                     <span>Subir Factura</span>
                 </a>
                 <a href="/receipts.html" class="nav-item">
-                    <span class="icon">🧾</span>
+                    <span class="icon"><i data-lucide="receipt"></i></span>
                     <span>Mis Facturas</span>
                 </a>
                 <a href="/analytics.html" class="nav-item">
-                    <span class="icon">📈</span>
+                    <span class="icon"><i data-lucide="trending-up"></i></span>
                     <span>Analytics</span>
                 </a>
                 <a href="/profile.html" class="nav-item active">
-                    <span class="icon">👤</span>
+                    <span class="icon"><i data-lucide="user"></i></span>
                     <span>Perfil</span>
                 </a>
             </nav>
@@ -60,7 +61,7 @@
         <main class="main-content">
             <div class="topbar">
                 <div class="flex items-center gap-4">
-                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                     <h1>Mi Perfil</h1>
                 </div>
             </div>
@@ -160,19 +161,19 @@
                                 <h4 style="font-size: 1rem; margin-bottom: 0.75rem;">Características</h4>
                                 <ul style="list-style: none; padding: 0;">
                                     <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                        <span>🤖</span>
+                                        <span><i data-lucide="bot" style="width: 18px; height: 18px;"></i></span>
                                         <span>Análisis automático con Claude AI</span>
                                     </li>
                                     <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                        <span>📊</span>
+                                        <span><i data-lucide="bar-chart-2" style="width: 18px; height: 18px;"></i></span>
                                         <span>Analytics avanzados y comparativas</span>
                                     </li>
                                     <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                        <span>🔒</span>
+                                        <span><i data-lucide="lock" style="width: 18px; height: 18px;"></i></span>
                                         <span>Autenticación segura con JWT</span>
                                     </li>
                                     <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                        <span>📈</span>
+                                        <span><i data-lucide="trending-up" style="width: 18px; height: 18px;"></i></span>
                                         <span>Seguimiento de precios e insights</span>
                                     </li>
                                 </ul>
@@ -249,7 +250,7 @@
                                     <div class="stat-value">${data.total_receipts || 0}</div>
                                     <div class="stat-label">Facturas Totales</div>
                                 </div>
-                                <div class="stat-icon">🧾</div>
+                                <div class="stat-icon"><i data-lucide="receipt"></i></div>
                             </div>
                             <div class="stat-trend">Este mes</div>
                         </div>
@@ -260,7 +261,7 @@
                                     <div class="stat-value">${formatCurrency(data.total_spent || 0)}</div>
                                     <div class="stat-label">Total Gastado</div>
                                 </div>
-                                <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">💰</div>
+                                <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);"><i data-lucide="dollar-sign"></i></div>
                             </div>
                             <div class="stat-trend">Este mes</div>
                         </div>
@@ -271,7 +272,7 @@
                                     <div class="stat-value">${data.stores_visited?.length || 0}</div>
                                     <div class="stat-label">Tiendas Visitadas</div>
                                 </div>
-                                <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🏪</div>
+                                <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);"><i data-lucide="store"></i></div>
                             </div>
                             <div class="stat-trend">Este mes</div>
                         </div>
@@ -282,11 +283,12 @@
                                     <div class="stat-value">${data.total_items || 0}</div>
                                     <div class="stat-label">Productos Comprados</div>
                                 </div>
-                                <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">🛒</div>
+                                <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);"><i data-lucide="shopping-cart"></i></div>
                             </div>
                             <div class="stat-trend">Este mes</div>
                         </div>
                     `;
+                    lucide.createIcons();
                 }
             } catch (error) {
                 console.error('Error loading stats:', error);
@@ -315,6 +317,9 @@
 
         // Initialize
         loadUserProfile();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>

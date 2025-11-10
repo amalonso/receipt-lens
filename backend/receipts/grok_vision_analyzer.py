@@ -71,6 +71,9 @@ Reglas importantes:
         self.model = "grok-2-vision-1212"  # Latest Grok Vision model
         logger.info(f"Grok Vision analyzer initialized with model: {self.model}")
 
+        # Store last API usage info for cost tracking
+        self.last_usage_info = None
+
     def _parse_grok_response(self, response_text: str) -> ClaudeAnalysisResponse:
         """
         Parse Grok's JSON response into structured data.
@@ -171,6 +174,27 @@ Reglas importantes:
             # Extract response text
             response_text = response.choices[0].message.content
             logger.debug(f"Grok response: {response_text[:200]}...")
+
+            # Store usage information for cost tracking
+            if hasattr(response, 'usage') and response.usage:
+                # Grok pricing (as of Dec 2024): $5 per 1M input tokens, $15 per 1M output tokens
+                input_tokens = response.usage.prompt_tokens
+                output_tokens = response.usage.completion_tokens
+                input_cost = (input_tokens / 1_000_000) * 5.0
+                output_cost = (output_tokens / 1_000_000) * 15.0
+                total_cost = input_cost + output_cost
+
+                self.last_usage_info = {
+                    'provider': 'grok',
+                    'model': self.model,
+                    'input_tokens': input_tokens,
+                    'output_tokens': output_tokens,
+                    'cost_usd': total_cost
+                }
+                logger.info(f"API usage: {input_tokens} input + {output_tokens} output tokens = ${total_cost:.6f}")
+            else:
+                logger.warning("No usage information available from Grok API response")
+                self.last_usage_info = None
 
             # Parse response
             analysis = self._parse_grok_response(response_text)

@@ -249,19 +249,55 @@
 
             currentEditKey = configKey;
             document.getElementById('modal-title').textContent = `Editar: ${config.config_key}`;
-            document.getElementById('modal-label').textContent = 'Nuevo valor:';
-            document.getElementById('modal-input').value = config.is_sensitive && config.config_value === '***HIDDEN***' ? '' : config.config_value;
             document.getElementById('modal-description').textContent = config.description || '';
 
-            // Change input type based on value type
-            const input = document.getElementById('modal-input');
+            const formGroup = document.querySelector('.form-group');
+
+            // Create appropriate input based on value type
             if (config.value_type === 'boolean') {
-                input.type = 'checkbox';
-                input.checked = config.config_value === 'true';
-            } else if (config.value_type === 'integer') {
-                input.type = 'number';
+                document.getElementById('modal-label').textContent = 'Nuevo valor:';
+                formGroup.querySelector('input, select')?.remove();
+
+                const select = document.createElement('select');
+                select.id = 'modal-input';
+                select.className = 'form-control';
+                select.required = true;
+
+                const optionTrue = document.createElement('option');
+                optionTrue.value = 'true';
+                optionTrue.textContent = 'True (Activado)';
+
+                const optionFalse = document.createElement('option');
+                optionFalse.value = 'false';
+                optionFalse.textContent = 'False (Desactivado)';
+
+                select.appendChild(optionTrue);
+                select.appendChild(optionFalse);
+                select.value = config.config_value === 'true' ? 'true' : 'false';
+
+                const label = formGroup.querySelector('label');
+                label.insertAdjacentElement('afterend', select);
             } else {
-                input.type = 'text';
+                document.getElementById('modal-label').textContent = 'Nuevo valor:';
+                formGroup.querySelector('select')?.remove();
+
+                let input = formGroup.querySelector('input');
+                if (!input) {
+                    input = document.createElement('input');
+                    input.id = 'modal-input';
+                    input.className = 'form-control';
+                    input.required = true;
+                    const label = formGroup.querySelector('label');
+                    label.insertAdjacentElement('afterend', input);
+                }
+
+                if (config.value_type === 'integer') {
+                    input.type = 'number';
+                } else {
+                    input.type = 'text';
+                }
+
+                input.value = config.is_sensitive && config.config_value === '***HIDDEN***' ? '' : config.config_value;
             }
 
             document.getElementById('edit-modal').style.display = 'flex';
@@ -272,13 +308,7 @@
 
             const config = allConfigs.find(c => c.config_key === currentEditKey);
             const input = document.getElementById('modal-input');
-            let newValue;
-
-            if (config.value_type === 'boolean') {
-                newValue = input.checked ? 'true' : 'false';
-            } else {
-                newValue = input.value;
-            }
+            const newValue = input.value;
 
             try {
                 await api.request(`/admin/config/${currentEditKey}`, {

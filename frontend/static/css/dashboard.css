@@ -383,6 +383,22 @@
         display: block;
     }
 
+    .mobile-back-btn {
+        display: inline-flex;
+    }
+
+    .topbar h1 {
+        font-size: 1.25rem;
+    }
+
+    .topbar-actions {
+        display: none;
+    }
+
+    .breadcrumbs {
+        font-size: 0.75rem;
+    }
+
     .receipt-item {
         flex-direction: column;
         align-items: flex-start;
@@ -393,15 +409,89 @@
         width: 100%;
         justify-content: space-between;
     }
+
+    .grid-cols-2 {
+        grid-template-columns: 1fr;
+    }
 }
 
 .mobile-menu-btn {
     display: none;
-    padding: 0.5rem;
-    background: none;
+    padding: 0.75rem;
+    background: var(--primary-color);
     border: none;
     font-size: 1.5rem;
     cursor: pointer;
+    color: white;
+    border-radius: var(--border-radius);
+    transition: var(--transition);
+    box-shadow: var(--shadow-sm);
+}
+
+.mobile-menu-btn:hover {
+    background: var(--primary-dark);
+    transform: scale(1.05);
+}
+
+.mobile-menu-btn:active {
+    transform: scale(0.95);
+}
+
+/* Breadcrumbs */
+.breadcrumbs {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+    margin-bottom: 1rem;
+    flex-wrap: wrap;
+}
+
+.breadcrumb-item {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.breadcrumb-item a {
+    color: var(--primary-color);
+    text-decoration: none;
+    transition: var(--transition);
+}
+
+.breadcrumb-item a:hover {
+    text-decoration: underline;
+}
+
+.breadcrumb-separator {
+    color: var(--text-light);
+}
+
+.breadcrumb-current {
+    color: var(--text-primary);
+    font-weight: 500;
+}
+
+/* Back button for mobile */
+.mobile-back-btn {
+    display: none;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    color: var(--text-primary);
+    text-decoration: none;
+    font-size: 0.875rem;
+    transition: var(--transition);
+    margin-bottom: 1rem;
+}
+
+.mobile-back-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--primary-color);
 }
 
 /* Sidebar Overlay for Mobile */

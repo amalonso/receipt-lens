@@ -6,6 +6,7 @@
     <title>Subir Factura - Receipt Lens</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
     <style>
         .upload-container {
             max-width: 800px;
@@ -232,29 +233,29 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <a href="/dashboard.html" class="sidebar-logo">
-                    🧾 Receipt Lens
+                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i> Receipt Lens
                 </a>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="/dashboard.html" class="nav-item">
-                    <span class="icon">📊</span>
+                    <span class="icon"><i data-lucide="layout-dashboard"></i></span>
                     <span>Dashboard</span>
                 </a>
                 <a href="/upload.html" class="nav-item active">
-                    <span class="icon">📤</span>
+                    <span class="icon"><i data-lucide="upload"></i></span>
                     <span>Subir Factura</span>
                 </a>
                 <a href="/receipts.html" class="nav-item">
-                    <span class="icon">🧾</span>
+                    <span class="icon"><i data-lucide="receipt"></i></span>
                     <span>Mis Facturas</span>
                 </a>
                 <a href="/analytics.html" class="nav-item">
-                    <span class="icon">📈</span>
+                    <span class="icon"><i data-lucide="trending-up"></i></span>
                     <span>Analytics</span>
                 </a>
                 <a href="/profile.html" class="nav-item">
-                    <span class="icon">👤</span>
+                    <span class="icon"><i data-lucide="user"></i></span>
                     <span>Perfil</span>
                 </a>
             </nav>
@@ -279,7 +280,7 @@
         <main class="main-content">
             <div class="topbar">
                 <div class="flex items-center gap-4">
-                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                     <h1>Subir Factura</h1>
                 </div>
             </div>
@@ -311,16 +312,16 @@
                             <!-- Mode Switch -->
                             <div class="mode-switch">
                                 <button type="button" class="mode-switch-btn active" id="single-mode-btn" onclick="switchMode('single')">
-                                    📄 Una imagen
+                                    <i data-lucide="file-text" style="width: 16px; height: 16px;"></i> Una imagen
                                 </button>
                                 <button type="button" class="mode-switch-btn" id="multiple-mode-btn" onclick="switchMode('multiple')">
-                                    📚 Múltiples imágenes (ticket largo)
+                                    <i data-lucide="layers" style="width: 16px; height: 16px;"></i> Múltiples imágenes (ticket largo)
                                 </button>
                             </div>
 
                             <!-- Dropzone (Single Mode) -->
                             <div class="dropzone" id="dropzone">
-                                <div class="dropzone-icon">📤</div>
+                                <div class="dropzone-icon"><i data-lucide="upload" style="width: 48px; height: 48px;"></i></div>
                                 <div class="dropzone-text">
                                     <p style="font-size: 1rem; margin-bottom: 0.5rem;"><strong id="dropzone-title">Arrastra tu factura aquí</strong></p>
                                     <p style="margin-bottom: 0.5rem;">o</p>
@@ -343,7 +344,7 @@
                                         <p style="font-size: 0.875rem; color: var(--text-secondary); margin: 0;" id="file-size">0 KB</p>
                                     </div>
                                     <button class="btn btn-danger btn-sm" onclick="clearFile()">
-                                        ✕ Eliminar
+                                        <i data-lucide="x" style="width: 14px; height: 14px;"></i> Eliminar
                                     </button>
                                 </div>
 
@@ -352,7 +353,7 @@
                                 </div>
 
                                 <button class="btn btn-primary btn-lg btn-block mt-4" id="upload-btn" onclick="uploadFile()">
-                                    🚀 Analizar Factura
+                                    <i data-lucide="zap" style="width: 18px; height: 18px;"></i> Analizar Factura
                                 </button>
                             </div>
 
@@ -371,14 +372,14 @@
                                 </div>
 
                                 <button class="btn btn-primary btn-lg btn-block mt-4" id="upload-btn-multiple" onclick="uploadMultipleFiles()">
-                                    🚀 Unir y Analizar Factura
+                                    <i data-lucide="zap" style="width: 18px; height: 18px;"></i> Unir y Analizar Factura
                                 </button>
                             </div>
 
                             <!-- Analysis Result -->
                             <div class="analysis-result" id="analysis-result">
                                 <div class="result-header">
-                                    <div class="result-icon">✅</div>
+                                    <div class="result-icon"><i data-lucide="check-circle" style="width: 32px; height: 32px;"></i></div>
                                     <div class="result-title">
                                         <h3>Análisis Completado</h3>
                                         <p>Tu factura ha sido procesada exitosamente</p>
@@ -415,24 +416,24 @@
                     <!-- Tips Card -->
                     <div class="card">
                         <div class="card-header">
-                            <h4 class="card-title">💡 Consejos para mejores resultados</h4>
+                            <h4 class="card-title"><i data-lucide="lightbulb" style="width: 18px; height: 18px;"></i> Consejos para mejores resultados</h4>
                         </div>
                         <div class="card-body">
                             <ul style="list-style: none; padding: 0;">
                                 <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                    <span>✓</span>
+                                    <span><i data-lucide="check" style="width: 16px; height: 16px; color: var(--success-color);"></i></span>
                                     <span>Asegúrate de que el texto sea legible y la imagen esté bien iluminada</span>
                                 </li>
                                 <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                    <span>✓</span>
+                                    <span><i data-lucide="check" style="width: 16px; height: 16px; color: var(--success-color);"></i></span>
                                     <span>Evita sombras y reflejos en la factura</span>
                                 </li>
                                 <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                    <span>✓</span>
+                                    <span><i data-lucide="check" style="width: 16px; height: 16px; color: var(--success-color);"></i></span>
                                     <span>La factura debe estar completa y sin cortes</span>
                                 </li>
                                 <li style="padding: 0.5rem 0; display: flex; gap: 0.75rem;">
-                                    <span>✓</span>
+                                    <span><i data-lucide="check" style="width: 16px; height: 16px; color: var(--success-color);"></i></span>
                                     <span>Formatos soportados: JPG, PNG, PDF (máx. 10MB)</span>
                                 </li>
                             </ul>
@@ -619,7 +620,7 @@
                     previewItem.innerHTML = `
                         <img src="${e.target.result}" alt="Preview ${index + 1}">
                         <button class="preview-item-remove" onclick="removeFile(${index})" title="Eliminar">
-                            ✕
+                            <i data-lucide="x" style="width: 14px; height: 14px;"></i>
                         </button>
                         <div class="preview-item-number">${index + 1}</div>
                     `;
@@ -723,7 +724,8 @@
                 progressBar.style.display = 'none';
                 showToast(error.message || 'Error al analizar las imágenes', 'error');
                 uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '🚀 Unir y Analizar Factura';
+                uploadBtn.innerHTML = '<i data-lucide="zap" style="width: 18px; height: 18px;"></i> Unir y Analizar Factura';
+                lucide.createIcons();
             }
         }
 
@@ -792,7 +794,8 @@
                 progressBar.style.display = 'none';
                 showToast(error.message || 'Error al analizar la factura', 'error');
                 uploadBtn.disabled = false;
-                uploadBtn.innerHTML = '🚀 Analizar Factura';
+                uploadBtn.innerHTML = '<i data-lucide="zap" style="width: 18px; height: 18px;"></i> Analizar Factura';
+                lucide.createIcons();
             }
         }
 
@@ -821,6 +824,9 @@
 
         // Initialize
         loadUserInfo();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>

@@ -6,6 +6,7 @@
     <title>Mis Facturas - Receipt Lens</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -13,29 +14,29 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <a href="/dashboard.html" class="sidebar-logo">
-                    🧾 Receipt Lens
+                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i> Receipt Lens
                 </a>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="/dashboard.html" class="nav-item">
-                    <span class="icon">📊</span>
+                    <span class="icon"><i data-lucide="layout-dashboard"></i></span>
                     <span>Dashboard</span>
                 </a>
                 <a href="/upload.html" class="nav-item">
-                    <span class="icon">📤</span>
+                    <span class="icon"><i data-lucide="upload"></i></span>
                     <span>Subir Factura</span>
                 </a>
                 <a href="/receipts.html" class="nav-item active">
-                    <span class="icon">🧾</span>
+                    <span class="icon"><i data-lucide="receipt"></i></span>
                     <span>Mis Facturas</span>
                 </a>
                 <a href="/analytics.html" class="nav-item">
-                    <span class="icon">📈</span>
+                    <span class="icon"><i data-lucide="trending-up"></i></span>
                     <span>Analytics</span>
                 </a>
                 <a href="/profile.html" class="nav-item">
-                    <span class="icon">👤</span>
+                    <span class="icon"><i data-lucide="user"></i></span>
                     <span>Perfil</span>
                 </a>
             </nav>
@@ -60,12 +61,12 @@
         <main class="main-content">
             <div class="topbar">
                 <div class="flex items-center gap-4">
-                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                     <h1>Mis Facturas</h1>
                 </div>
                 <div class="topbar-actions">
                     <a href="/upload.html" class="btn btn-primary">
-                        📤 Subir Factura
+                        <i data-lucide="upload" style="width: 16px; height: 16px;"></i> Subir Factura
                     </a>
                 </div>
             </div>
@@ -210,11 +211,12 @@
                 console.error('Error loading receipts:', error);
                 listContainer.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">❌</div>
+                        <div class="empty-state-icon"><i data-lucide="x-circle"></i></div>
                         <h3 class="empty-state-title">Error al cargar facturas</h3>
                         <p class="empty-state-text">${error.message}</p>
                     </div>
                 `;
+                lucide.createIcons();
             }
         }
 
@@ -224,12 +226,13 @@
             if (!receipts || receipts.length === 0) {
                 listContainer.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">🧾</div>
+                        <div class="empty-state-icon"><i data-lucide="receipt"></i></div>
                         <h3 class="empty-state-title">No hay facturas</h3>
                         <p class="empty-state-text">Sube tu primera factura para comenzar</p>
-                        <a href="/upload.html" class="btn btn-primary">📤 Subir Factura</a>
+                        <a href="/upload.html" class="btn btn-primary"><i data-lucide="upload" style="width: 16px; height: 16px;"></i> Subir Factura</a>
                     </div>
                 `;
+                lucide.createIcons();
                 return;
             }
 
@@ -243,11 +246,12 @@
                         <div class="receipt-items-count">${receipt.items_count || 0} items</div>
                         <div class="receipt-amount">${formatCurrency(receipt.total_amount)}</div>
                         <button class="btn btn-danger btn-sm" onclick="openDeleteModal(${receipt.id}, '${receipt.store_name}', ${receipt.total_amount}); event.stopPropagation();">
-                            🗑️
+                            <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i>
                         </button>
                     </div>
                 </div>
             `).join('');
+            lucide.createIcons();
         }
 
         function updatePagination() {
@@ -368,6 +372,9 @@
         // Initialize
         loadUserInfo();
         loadReceipts();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>

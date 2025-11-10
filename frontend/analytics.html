@@ -8,6 +8,7 @@
     <link rel="stylesheet" href="/static/css/dashboard.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns@3.0.0/dist/chartjs-adapter-date-fns.bundle.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -15,29 +16,29 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <a href="/dashboard.html" class="sidebar-logo">
-                    🧾 Receipt Lens
+                    <i data-lucide="receipt" style="width: 20px; height: 20px;"></i> Receipt Lens
                 </a>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="/dashboard.html" class="nav-item">
-                    <span class="icon">📊</span>
+                    <span class="icon"><i data-lucide="layout-dashboard"></i></span>
                     <span>Dashboard</span>
                 </a>
                 <a href="/upload.html" class="nav-item">
-                    <span class="icon">📤</span>
+                    <span class="icon"><i data-lucide="upload"></i></span>
                     <span>Subir Factura</span>
                 </a>
                 <a href="/receipts.html" class="nav-item">
-                    <span class="icon">🧾</span>
+                    <span class="icon"><i data-lucide="receipt"></i></span>
                     <span>Mis Facturas</span>
                 </a>
                 <a href="/analytics.html" class="nav-item active">
-                    <span class="icon">📈</span>
+                    <span class="icon"><i data-lucide="trending-up"></i></span>
                     <span>Analytics</span>
                 </a>
                 <a href="/profile.html" class="nav-item">
-                    <span class="icon">👤</span>
+                    <span class="icon"><i data-lucide="user"></i></span>
                     <span>Perfil</span>
                 </a>
             </nav>
@@ -62,7 +63,7 @@
         <main class="main-content">
             <div class="topbar">
                 <div class="flex items-center gap-4">
-                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                     <h1>Analytics</h1>
                 </div>
                 <div class="topbar-actions">
@@ -141,7 +142,7 @@
                     <div class="card-body">
                         <div id="price-evolution-container">
                             <div class="empty-state">
-                                <div class="empty-state-icon">📊</div>
+                                <div class="empty-state-icon"><i data-lucide="bar-chart-2"></i></div>
                                 <h3 class="empty-state-title">Busca un producto</h3>
                                 <p class="empty-state-text">Ingresa el nombre de un producto para ver su evolución de precios</p>
                             </div>
@@ -219,7 +220,7 @@
                             <div class="stat-value">${formatCurrency(data.total_spent)}</div>
                             <div class="stat-label">Total Gastado</div>
                         </div>
-                        <div class="stat-icon">💰</div>
+                        <div class="stat-icon"><i data-lucide="dollar-sign"></i></div>
                     </div>
                 </div>
 
@@ -229,7 +230,7 @@
                             <div class="stat-value">${data.total_receipts}</div>
                             <div class="stat-label">Facturas</div>
                         </div>
-                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">🧾</div>
+                        <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);"><i data-lucide="receipt"></i></div>
                     </div>
                 </div>
 
@@ -239,7 +240,7 @@
                             <div class="stat-value">${data.total_items}</div>
                             <div class="stat-label">Productos</div>
                         </div>
-                        <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🛒</div>
+                        <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);"><i data-lucide="shopping-cart"></i></div>
                     </div>
                 </div>
 
@@ -249,10 +250,11 @@
                             <div class="stat-value">${data.stores_visited?.length || 0}</div>
                             <div class="stat-label">Tiendas Visitadas</div>
                         </div>
-                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">🏪</div>
+                        <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);"><i data-lucide="store"></i></div>
                     </div>
                 </div>
             `;
+            lucide.createIcons();
         }
 
         async function loadStoreComparison() {
@@ -282,11 +284,12 @@
             if (!data || Object.keys(data).length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">🏪</div>
+                        <div class="empty-state-icon"><i data-lucide="store"></i></div>
                         <h3 class="empty-state-title">No hay datos de tiendas</h3>
                         <p class="empty-state-text">Sube más facturas para ver comparaciones</p>
                     </div>
                 `;
+                lucide.createIcons();
                 return;
             }
 
@@ -322,7 +325,7 @@
                                     <div class="grid grid-cols-2">
                                         <div>
                                             <h5 style="font-size: 0.875rem; color: var(--success-color); margin-bottom: 0.75rem;">
-                                                ✓ Mejores Ofertas (${storeData.best_deals?.length || 0})
+                                                <i data-lucide="check" style="width: 14px; height: 14px;"></i> Mejores Ofertas (${storeData.best_deals?.length || 0})
                                             </h5>
                                             ${storeData.best_deals?.length > 0 ? `
                                                 <ul style="list-style: none; padding: 0; font-size: 0.875rem;">
@@ -339,7 +342,7 @@
                                         </div>
                                         <div>
                                             <h5 style="font-size: 0.875rem; color: var(--danger-color); margin-bottom: 0.75rem;">
-                                                ✗ Precios Altos (${storeData.worst_deals?.length || 0})
+                                                <i data-lucide="x" style="width: 14px; height: 14px;"></i> Precios Altos (${storeData.worst_deals?.length || 0})
                                             </h5>
                                             ${storeData.worst_deals?.length > 0 ? `
                                                 <ul style="list-style: none; padding: 0; font-size: 0.875rem;">
@@ -361,6 +364,7 @@
                     }).join('')}
                 </div>
             `;
+            lucide.createIcons();
         }
 
         async function searchPriceEvolution() {
@@ -385,11 +389,12 @@
                 console.error('Error loading price evolution:', error);
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">❌</div>
+                        <div class="empty-state-icon"><i data-lucide="x-circle"></i></div>
                         <h3 class="empty-state-title">No se encontró el producto</h3>
                         <p class="empty-state-text">Intenta con otro nombre de producto</p>
                     </div>
                 `;
+                lucide.createIcons();
             }
         }
 
@@ -399,11 +404,12 @@
             if (!data.price_history || Object.keys(data.price_history).length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
-                        <div class="empty-state-icon">📊</div>
+                        <div class="empty-state-icon"><i data-lucide="bar-chart-2"></i></div>
                         <h3 class="empty-state-title">No hay datos de precios</h3>
                         <p class="empty-state-text">No se encontró historial de precios para "${productName}"</p>
                     </div>
                 `;
+                lucide.createIcons();
                 return;
             }
 
@@ -441,9 +447,9 @@
                 ${data.trend ? `
                     <div class="alert alert-info" style="margin-top: 1rem;">
                         <strong>Tendencia:</strong>
-                        ${data.trend === 'increasing' ? '📈 Precios en aumento' :
-                          data.trend === 'decreasing' ? '📉 Precios en descenso' :
-                          '➡️ Precios estables'}
+                        ${data.trend === 'increasing' ? '<i data-lucide="trending-up" style="width: 16px; height: 16px;"></i> Precios en aumento' :
+                          data.trend === 'decreasing' ? '<i data-lucide="trending-down" style="width: 16px; height: 16px;"></i> Precios en descenso' :
+                          '<i data-lucide="arrow-right" style="width: 16px; height: 16px;"></i> Precios estables'}
                     </div>
                 ` : ''}
                 ${data.best_store ? `
@@ -495,6 +501,7 @@
                     },
                 },
             });
+            lucide.createIcons();
         }
 
         function updatePeriod() {
@@ -527,6 +534,9 @@
         // Initialize
         loadUserInfo();
         loadAnalytics();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 </body>
 </html>

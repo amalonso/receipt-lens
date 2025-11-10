@@ -13,7 +13,11 @@ sys.path.insert(0, str(Path(__file__).parent.parent))
 
 from sqlalchemy import text
 from backend.database.session import engine, SessionLocal
+from backend.database.base import import_models
 from backend.auth.models import User
+
+# Import all models to ensure relationships are properly registered
+import_models()
 
 
 def run_migration():

@@ -161,7 +161,7 @@
         // Check authentication and admin status
         async function checkAuth() {
             if (!api.isAuthenticated()) {
-                window.location.href = '/login.html';
+                window.location.replace('/login.html');
                 return false;
             }
 
@@ -170,8 +170,7 @@
                 const user = response.data;
 
                 if (!user.is_admin) {
-                    alert('No tienes permisos de administrador');
-                    window.location.href = '/dashboard.html';
+                    window.location.replace('/dashboard.html');
                     return false;
                 }
 
@@ -182,7 +181,7 @@
                 return true;
             } catch (error) {
                 console.error('Auth check failed:', error);
-                window.location.href = '/login.html';
+                window.location.replace('/login.html');
                 return false;
             }
         }

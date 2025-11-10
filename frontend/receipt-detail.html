@@ -89,6 +89,7 @@
                     <span class="icon">👤</span>
                     <span>Perfil</span>
                 </a>
+            <div id="admin-nav-section" style="display: none;"></div>
             </nav>
 
             <div class="sidebar-footer">
@@ -136,7 +137,8 @@
                     <div class="breadcrumb-item">
                         <span class="breadcrumb-current">Detalle de Factura</span>
                     </div>
-                </nav>
+                <div id="admin-nav-section" style="display: none;"></div>
+            </nav>
 
                 <!-- Mobile back button -->
                 <a href="/receipts.html" class="mobile-back-btn">
@@ -154,6 +156,7 @@
 
     <script src="/static/js/api.js"></script>
     <script src="/static/js/utils.js"></script>
+    <script src="/static/js/admin-nav.js"></script>
     <script>
         requireAuth();
 
@@ -177,6 +180,9 @@
             document.getElementById('user-avatar').textContent = avatar;
             document.getElementById('user-name').textContent = user.username;
             document.getElementById('user-email').textContent = user.email;
+
+            // Show admin navigation if user is admin
+            addAdminNavigation(user);
         }
 
         // Get receipt ID from URL

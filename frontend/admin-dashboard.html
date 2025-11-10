@@ -179,8 +179,9 @@
 
         // Check authentication and admin status
         async function checkAuth() {
+            // First check if token exists
             if (!api.isAuthenticated()) {
-                window.location.href = '/login.html';
+                window.location.replace('/login.html');
                 return false;
             }
 
@@ -188,12 +189,13 @@
                 const response = await api.request('/auth/me');
                 const user = response.data;
 
+                // Immediately redirect if not admin, before showing anything
                 if (!user.is_admin) {
-                    alert('No tienes permisos de administrador');
-                    window.location.href = '/dashboard.html';
+                    window.location.replace('/dashboard.html');
                     return false;
                 }
 
+                // Only update UI if user is admin
                 document.getElementById('user-name').textContent = user.username;
                 document.getElementById('user-email').textContent = user.email;
                 document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
@@ -201,7 +203,7 @@
                 return true;
             } catch (error) {
                 console.error('Auth check failed:', error);
-                window.location.href = '/login.html';
+                window.location.replace('/login.html');
                 return false;
             }
         }

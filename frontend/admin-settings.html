@@ -158,18 +158,18 @@
         let currentEditKey = null;
 
         async function checkAuth() {
-            if (!api.isAuthenticated()) { window.location.href = '/login.html'; return false; }
+            if (!api.isAuthenticated()) { window.location.replace('/login.html'); return false; }
             try {
                 const response = await api.request('/auth/me');
                 const user = response.data;
-                if (!user.is_admin) { alert('No tienes permisos de administrador'); window.location.href = '/dashboard.html'; return false; }
+                if (!user.is_admin) { window.location.replace('/dashboard.html'); return false; }
                 document.getElementById('user-name').textContent = user.username;
                 document.getElementById('user-email').textContent = user.email;
                 document.getElementById('user-avatar').textContent = user.username.charAt(0).toUpperCase();
                 return true;
             } catch (error) {
                 console.error('Auth check failed:', error);
-                window.location.href = '/login.html';
+                window.location.replace('/login.html');
                 return false;
             }
         }

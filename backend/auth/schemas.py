@@ -92,7 +92,11 @@ class UserResponse(BaseModel):
     id: int
     username: str
     email: str
+    is_admin: bool = False
+    is_active: bool = True
+    last_login: Optional[datetime] = None
     created_at: datetime
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True  # Pydantic v2 (was orm_mode in v1)

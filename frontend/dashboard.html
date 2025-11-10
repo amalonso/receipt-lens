@@ -116,6 +116,9 @@
                         <h3 class="card-title">Facturas Recientes</h3>
                         <a href="/receipts.html" class="btn btn-outline btn-sm">Ver Todas</a>
                     </div>
+                    <div style="padding: 0 1.5rem; margin-bottom: 0.5rem; color: var(--text-secondary); font-size: 0.875rem;">
+                        Mostrando las últimas 5 facturas (todos los meses)
+                    </div>
                     <div class="card-body">
                         <div class="receipt-list" id="recent-receipts">
                             <div class="flex items-center justify-center" style="padding: 2rem;">
@@ -190,6 +193,9 @@
         }
 
         function renderStats(data) {
+            const now = new Date();
+            const monthName = now.toLocaleDateString('es-ES', { month: 'long', year: 'numeric' });
+
             const statsGrid = document.getElementById('stats-grid');
             statsGrid.innerHTML = `
                 <div class="stat-card">
@@ -200,7 +206,7 @@
                         </div>
                         <div class="stat-icon">💰</div>
                     </div>
-                    <div class="stat-trend">Este mes</div>
+                    <div class="stat-trend">📅 ${monthName}</div>
                 </div>
 
                 <div class="stat-card" style="border-left-color: var(--success-color);">
@@ -211,7 +217,7 @@
                         </div>
                         <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);">🧾</div>
                     </div>
-                    <div class="stat-trend">Este mes</div>
+                    <div class="stat-trend">📅 ${monthName}</div>
                 </div>
 
                 <div class="stat-card" style="border-left-color: var(--info-color);">
@@ -222,7 +228,7 @@
                         </div>
                         <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);">🛒</div>
                     </div>
-                    <div class="stat-trend">Este mes</div>
+                    <div class="stat-trend">📅 ${monthName}</div>
                 </div>
 
                 <div class="stat-card" style="border-left-color: var(--warning-color);">
@@ -233,7 +239,7 @@
                         </div>
                         <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);">📊</div>
                     </div>
-                    <div class="stat-trend">Este mes</div>
+                    <div class="stat-trend">📅 ${monthName}</div>
                 </div>
             `;
         }

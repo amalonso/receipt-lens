@@ -42,6 +42,7 @@ class ReceiptUploadResponse(BaseModel):
     image_path: str
     processed: bool
     created_at: datetime
+    items_count: int = Field(default=0, description="Number of items extracted from the receipt")
 
     class Config:
         from_attributes = True

@@ -236,12 +236,8 @@
             const container = document.getElementById('user-stats');
 
             try {
-                // Get current month summary for stats
-                const now = new Date();
-                const month = now.getMonth() + 1;
-                const year = now.getFullYear();
-
-                const response = await window.api.getMonthlySummary(month, year);
+                // Get all-time summary for stats
+                const response = await window.api.getAllTimeSummary();
 
                 if (response.success) {
                     const data = response.data;
@@ -250,12 +246,12 @@
                         <div class="stat-card">
                             <div class="stat-header">
                                 <div>
-                                    <div class="stat-value">${data.total_receipts || 0}</div>
+                                    <div class="stat-value">${data.receipts_count || 0}</div>
                                     <div class="stat-label">Facturas Totales</div>
                                 </div>
                                 <div class="stat-icon"><i data-lucide="receipt"></i></div>
                             </div>
-                            <div class="stat-trend">Este mes</div>
+                            <div class="stat-trend">Todas las facturas</div>
                         </div>
 
                         <div class="stat-card" style="border-left-color: var(--success-color);">
@@ -266,7 +262,7 @@
                                 </div>
                                 <div class="stat-icon" style="background-color: rgba(16, 185, 129, 0.1); color: var(--success-color);"><i data-lucide="dollar-sign"></i></div>
                             </div>
-                            <div class="stat-trend">Este mes</div>
+                            <div class="stat-trend">Todas las facturas</div>
                         </div>
 
                         <div class="stat-card" style="border-left-color: var(--info-color);">
@@ -277,18 +273,18 @@
                                 </div>
                                 <div class="stat-icon" style="background-color: rgba(59, 130, 246, 0.1); color: var(--info-color);"><i data-lucide="store"></i></div>
                             </div>
-                            <div class="stat-trend">Este mes</div>
+                            <div class="stat-trend">Todas las facturas</div>
                         </div>
 
                         <div class="stat-card" style="border-left-color: var(--warning-color);">
                             <div class="stat-header">
                                 <div>
-                                    <div class="stat-value">${data.total_items || 0}</div>
+                                    <div class="stat-value">${data.items_count || 0}</div>
                                     <div class="stat-label">Productos Comprados</div>
                                 </div>
                                 <div class="stat-icon" style="background-color: rgba(245, 158, 11, 0.1); color: var(--warning-color);"><i data-lucide="shopping-cart"></i></div>
                             </div>
-                            <div class="stat-trend">Este mes</div>
+                            <div class="stat-trend">Todas las facturas</div>
                         </div>
                     `;
                     lucide.createIcons();

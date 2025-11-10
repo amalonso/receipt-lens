@@ -161,7 +161,7 @@
     <script>
         requireAuth();
 
-        let currentPeriod = 6;
+        let currentPeriod = 24; // Changed to 24 months to include all historical data
         let priceChart = null;
 
         // Load user info
@@ -287,7 +287,7 @@
         function renderStoreComparison(data) {
             const container = document.getElementById('store-comparison');
 
-            if (!data || Object.keys(data).length === 0) {
+            if (!data || !data.stores || data.stores.length === 0) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon"><i data-lucide="store"></i></div>
@@ -299,11 +299,11 @@
                 return;
             }
 
-            const stores = Object.entries(data);
+            const stores = data.stores;
 
             container.innerHTML = `
                 <div class="grid grid-cols-1" style="gap: 1.5rem;">
-                    ${stores.map(([storeName, storeData]) => {
+                    ${stores.map(storeData => {
                         const priceIndex = storeData.price_index || 100;
                         const isPricey = priceIndex > 105;
                         const isCheap = priceIndex < 95;
@@ -313,7 +313,7 @@
                             <div class="card">
                                 <div class="card-header">
                                     <div>
-                                        <h4 class="card-title">${storeName}</h4>
+                                        <h4 class="card-title">${storeData.store_name}</h4>
                                         <p class="card-subtitle">
                                             ${storeData.visit_count} visitas • ${formatCurrency(storeData.total_spent)} gastado
                                         </p>
@@ -339,7 +339,7 @@
                                                         <li style="padding: 0.25rem 0;">
                                                             ${deal.product}: ${formatCurrency(deal.price)}
                                                             <span style="color: var(--success-color);">
-                                                                (${deal.savings_percent.toFixed(0)}% menos)
+                                                                (${deal.percentage_diff.toFixed(0)}% menos)
                                                             </span>
                                                         </li>
                                                     `).join('')}
@@ -356,7 +356,7 @@
                                                         <li style="padding: 0.25rem 0;">
                                                             ${deal.product}: ${formatCurrency(deal.price)}
                                                             <span style="color: var(--danger-color);">
-                                                                (+${deal.markup_percent.toFixed(0)}% más)
+                                                                (+${deal.percentage_diff.toFixed(0)}% más)
                                                             </span>
                                                         </li>
                                                     `).join('')}

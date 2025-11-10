@@ -30,17 +30,20 @@ def run_migration():
 
     print("🔄 Executing migration...")
     try:
-        with engine.begin() as conn:
-            # Split by semicolon and execute each statement
-            statements = [s.strip() for s in migration_sql.split(';') if s.strip()]
-            for statement in statements:
-                # Skip comments and empty statements
-                if statement.startswith('--') or not statement:
-                    continue
-                conn.execute(text(statement))
-
-        print("✅ Migration completed successfully!")
-        return True
+        # Execute the entire SQL file as a single block to respect transaction boundaries
+        # The migration file contains BEGIN/COMMIT, so we use raw connection
+        with engine.raw_connection() as conn:
+            cursor = conn.cursor()
+            try:
+                cursor.execute(migration_sql)
+                conn.commit()
+                print("✅ Migration completed successfully!")
+                return True
+            except Exception as e:
+                conn.rollback()
+                raise e
+            finally:
+                cursor.close()
     except Exception as e:
         print(f"❌ Migration failed: {e}")
         return False

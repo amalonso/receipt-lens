@@ -6,6 +6,7 @@
     <title>Gestión de Usuarios - Admin - Receipt Lens</title>
     <link rel="stylesheet" href="/static/css/main.css">
     <link rel="stylesheet" href="/static/css/dashboard.css">
+    <script src="https://unpkg.com/lucide@latest"></script>
 </head>
 <body>
     <div class="dashboard-wrapper">
@@ -13,31 +14,31 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <a href="/admin-dashboard.html" class="sidebar-logo">
-                    👑 Admin Panel
+                    <i data-lucide="crown" style="width: 20px; height: 20px;"></i> Admin Panel
                 </a>
             </div>
 
             <nav class="sidebar-nav">
                 <a href="/dashboard.html" class="nav-item">
-                    <span class="icon">📊</span>
+                    <span class="icon"><i data-lucide="layout-dashboard"></i></span>
                     <span>Mi Dashboard</span>
                 </a>
                 <div class="nav-separator"></div>
                 <div class="nav-section-title">Administración</div>
                 <a href="/admin-dashboard.html" class="nav-item">
-                    <span class="icon">👑</span>
+                    <span class="icon"><i data-lucide="shield"></i></span>
                     <span>Dashboard Admin</span>
                 </a>
                 <a href="/admin-users.html" class="nav-item active">
-                    <span class="icon">👥</span>
+                    <span class="icon"><i data-lucide="users"></i></span>
                     <span>Usuarios</span>
                 </a>
                 <a href="/admin-analytics.html" class="nav-item">
-                    <span class="icon">📈</span>
+                    <span class="icon"><i data-lucide="trending-up"></i></span>
                     <span>Analytics Global</span>
                 </a>
                 <a href="/admin-settings.html" class="nav-item">
-                    <span class="icon">⚙️</span>
+                    <span class="icon"><i data-lucide="settings"></i></span>
                     <span>Configuración</span>
                 </a>
             </nav>
@@ -64,7 +65,7 @@
             <!-- Top Bar -->
             <div class="topbar">
                 <div class="flex items-center gap-4">
-                    <button class="mobile-menu-btn" onclick="toggleSidebar()">☰</button>
+                    <button class="mobile-menu-btn" onclick="toggleSidebar()"><i data-lucide="menu"></i></button>
                     <h1>Gestión de Usuarios</h1>
                 </div>
             </div>
@@ -417,8 +418,8 @@
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
-            sidebar.classList.toggle('show');
-            overlay.classList.toggle('show');
+            sidebar.classList.toggle('mobile-open');
+            overlay.classList.toggle('active');
         }
 
         // Close sidebar when clicking overlay
@@ -443,6 +444,9 @@
 
         // Run initialization when page loads
         init();
+
+        // Initialize Lucide icons
+        lucide.createIcons();
     </script>
 
     <style>

@@ -126,10 +126,38 @@ class ClaudeAnalysisResponse(BaseModel):
             raise ValueError('Date must be in YYYY-MM-DD format')
 
 
+class ItemUpdateSchema(BaseModel):
+    """Schema for updating an item."""
+
+    id: Optional[int] = Field(None, description="Item ID (null for new items)")
+    product_name: str = Field(..., description="Name of the product")
+    category: str = Field(..., description="Product category")
+    quantity: float = Field(default=1.0, description="Quantity purchased")
+    unit_price: Optional[float] = Field(None, description="Price per unit")
+    total_price: float = Field(..., description="Total price for this item")
+
+    @validator('category')
+    def validate_category(cls, v: str) -> str:
+        """Validate category is one of the allowed values."""
+        allowed_categories = [
+            'bebidas', 'carne', 'verduras', 'lácteos',
+            'panadería', 'limpieza', 'ocio', 'otros'
+        ]
+        if v.lower() not in allowed_categories:
+            return 'otros'
+        return v.lower()
+
+    class Config:
+        from_attributes = True
+
+
 class ReceiptUpdateRequest(BaseModel):
     """Schema for updating a receipt."""
 
     store_name: Optional[str] = Field(None, description="Store name")
+    purchase_date: Optional[date] = Field(None, description="Purchase date")
+    total_amount: Optional[float] = Field(None, description="Total amount")
+    items: Optional[List[ItemUpdateSchema]] = Field(None, description="List of items (replaces all existing items)")
 
     class Config:
         from_attributes = True

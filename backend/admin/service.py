@@ -12,7 +12,7 @@ from sqlalchemy import func, desc, and_, or_, text, case
 from sqlalchemy.orm import Session
 
 from backend.auth.models import User
-from backend.receipts.models import Receipt, Item, Category
+from backend.receipts.models import Receipt, Item, Category, ReceiptReviewData
 from backend.admin.models import ApiCost, ActivityLog, SystemConfig
 
 logger = logging.getLogger(__name__)
@@ -866,3 +866,218 @@ class AdminService:
             result.append(receipt_dict)
 
         return result, total_count
+
+    # ============ RECEIPT REVIEW MANAGEMENT ============
+
+    @staticmethod
+    def get_receipt_reviews(
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        reported_only: Optional[bool] = None,
+        analyzer_used: Optional[str] = None
+    ) -> tuple[List[Dict], int]:
+        """
+        Get receipt review data with filters and pagination.
+
+        Args:
+            db: Database session
+            skip: Number of records to skip
+            limit: Maximum number of records to return
+            reported_only: Filter only reported receipts
+            analyzer_used: Filter by analyzer name
+
+        Returns:
+            tuple: (list of review dicts with receipt info, total count)
+        """
+        query = db.query(ReceiptReviewData).join(Receipt)
+
+        # Apply filters
+        if reported_only is not None:
+            query = query.filter(ReceiptReviewData.reported == reported_only)
+
+        if analyzer_used:
+            query = query.filter(ReceiptReviewData.analyzer_used == analyzer_used)
+
+        # Get total count
+        total_count = query.count()
+
+        # Order by created_at (most recent first), then by reported (reported first)
+        query = query.order_by(
+            desc(ReceiptReviewData.reported),
+            desc(ReceiptReviewData.created_at)
+        )
+
+        # Paginate
+        reviews = query.offset(skip).limit(limit).all()
+
+        # Enrich with receipt information
+        result = []
+        for review in reviews:
+            review_dict = {
+                "id": review.id,
+                "receipt_id": review.receipt_id,
+                "analyzer_used": review.analyzer_used,
+                "reported": review.reported,
+                "created_at": review.created_at,
+                # Receipt information
+                "store_name": review.receipt.store_name,
+                "purchase_date": review.receipt.purchase_date,
+                "total_amount": float(review.receipt.total_amount)
+            }
+            result.append(review_dict)
+
+        return result, total_count
+
+    @staticmethod
+    def get_receipt_review_detail(db: Session, review_id: int) -> Dict[str, Any]:
+        """
+        Get detailed information about a receipt review.
+
+        Args:
+            db: Database session
+            review_id: Review ID
+
+        Returns:
+            dict: Review data with full details
+
+        Raises:
+            HTTPException: If review not found
+        """
+        from fastapi import HTTPException, status
+
+        review = db.query(ReceiptReviewData).filter(
+            ReceiptReviewData.id == review_id
+        ).first()
+
+        if not review:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Receipt review not found"
+            )
+
+        return review.to_dict()
+
+    @staticmethod
+    async def test_analyzer_on_receipt(
+        db: Session,
+        review_id: int,
+        analyzer_name: str
+    ) -> Dict[str, Any]:
+        """
+        Test a different analyzer on a receipt.
+
+        Args:
+            db: Database session
+            review_id: Review ID
+            analyzer_name: Name of analyzer to test
+
+        Returns:
+            dict: Test results
+
+        Raises:
+            HTTPException: If review not found or analyzer fails
+        """
+        from fastapi import HTTPException, status
+        from backend.receipts.analyzer_factory import get_analyzer
+        from backend.receipts.vision_analyzer import VisionAnalyzerError
+        from backend.config import settings
+        import json
+        import time
+
+        review = db.query(ReceiptReviewData).filter(
+            ReceiptReviewData.id == review_id
+        ).first()
+
+        if not review:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Receipt review not found"
+            )
+
+        # Validate image path exists
+        import os
+        if not os.path.exists(review.image_path):
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Receipt image file not found"
+            )
+
+        try:
+            # Temporarily override the vision provider
+            original_provider = settings.vision_provider
+            settings.vision_provider = analyzer_name
+
+            start_time = time.time()
+
+            # Get analyzer and analyze receipt
+            analyzer = get_analyzer()
+            analysis = await analyzer.analyze_receipt(review.image_path)
+
+            processing_time = int((time.time() - start_time) * 1000)
+
+            # Restore original provider
+            settings.vision_provider = original_provider
+
+            return {
+                "success": True,
+                "analyzer_name": analyzer_name,
+                "analysis_response": json.dumps(analysis.dict(), ensure_ascii=False),
+                "error": None,
+                "processing_time_ms": processing_time
+            }
+
+        except VisionAnalyzerError as e:
+            # Restore original provider
+            settings.vision_provider = original_provider
+            logger.error(f"Analyzer test failed: {str(e)}")
+            return {
+                "success": False,
+                "analyzer_name": analyzer_name,
+                "analysis_response": None,
+                "error": str(e),
+                "processing_time_ms": None
+            }
+
+        except Exception as e:
+            # Restore original provider
+            settings.vision_provider = original_provider
+            logger.error(f"Unexpected error in analyzer test: {str(e)}")
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail=f"Failed to test analyzer: {str(e)}"
+            )
+
+    @staticmethod
+    def mark_review_as_reviewed(db: Session, review_id: int) -> bool:
+        """
+        Mark a receipt review as reviewed.
+
+        Args:
+            db: Database session
+            review_id: Review ID
+
+        Returns:
+            bool: True if successful
+
+        Raises:
+            HTTPException: If review not found
+        """
+        from fastapi import HTTPException, status
+
+        review = db.query(ReceiptReviewData).filter(
+            ReceiptReviewData.id == review_id
+        ).first()
+
+        if not review:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Receipt review not found"
+            )
+
+        review.reviewed_at = datetime.utcnow()
+        db.commit()
+
+        logger.info(f"Receipt review {review_id} marked as reviewed")
+
+        return True

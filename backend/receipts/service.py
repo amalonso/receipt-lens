@@ -6,6 +6,7 @@ Handles file upload, Claude AI analysis, and database operations.
 import logging
 import hashlib
 import os
+import json
 from datetime import datetime, date
 from typing import List, Optional, Tuple
 from pathlib import Path
@@ -15,7 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from backend.config import settings
-from backend.receipts.models import Receipt, Item, Category
+from backend.receipts.models import Receipt, Item, Category, ReceiptReviewData
 from backend.receipts.schemas import (
     ClaudeAnalysisResponse,
     ReceiptDetailResponse,
@@ -301,6 +302,21 @@ class ReceiptService:
 
             logger.info(f"Created receipt: ID={receipt.id}, store={receipt.store_name}")
 
+            # Save review data for admin review
+            analyzer_name = settings.vision_provider
+            if hasattr(analyzer, 'last_usage_info') and analyzer.last_usage_info:
+                analyzer_name = analyzer.last_usage_info.get('provider', settings.vision_provider)
+
+            review_data = ReceiptReviewData(
+                receipt_id=receipt.id,
+                image_path=file_path,
+                analyzer_used=analyzer_name,
+                analysis_response=json.dumps(analysis.dict(), ensure_ascii=False),
+                reported=False
+            )
+            db.add(review_data)
+            logger.info(f"Saved review data for receipt {receipt.id} using analyzer: {analyzer_name}")
+
             # Track API cost if usage info is available
             if hasattr(analyzer, 'last_usage_info') and analyzer.last_usage_info:
                 usage = analyzer.last_usage_info
@@ -531,6 +547,21 @@ class ReceiptService:
 
             logger.info(f"Created receipt: ID={receipt.id}, store={receipt.store_name}")
 
+            # Save review data for admin review
+            analyzer_name = settings.vision_provider
+            if hasattr(analyzer, 'last_usage_info') and analyzer.last_usage_info:
+                analyzer_name = analyzer.last_usage_info.get('provider', settings.vision_provider)
+
+            review_data = ReceiptReviewData(
+                receipt_id=receipt.id,
+                image_path=merged_path,
+                analyzer_used=analyzer_name,
+                analysis_response=json.dumps(analysis.dict(), ensure_ascii=False),
+                reported=False
+            )
+            db.add(review_data)
+            logger.info(f"Saved review data for receipt {receipt.id} using analyzer: {analyzer_name}")
+
             # Track API cost if usage info is available
             if hasattr(analyzer, 'last_usage_info') and analyzer.last_usage_info:
                 usage = analyzer.last_usage_info
@@ -760,6 +791,53 @@ class ReceiptService:
         db.commit()
 
         logger.info(f"Deleted receipt ID={receipt_id} for user {user_id}")
+
+        return True
+
+    @staticmethod
+    def report_receipt(
+        db: Session,
+        receipt_id: int,
+        user_id: int,
+        message: Optional[str] = None
+    ) -> bool:
+        """
+        Report a receipt analysis issue for admin review.
+
+        Args:
+            db: Database session
+            receipt_id: Receipt ID
+            user_id: User ID (for ownership verification)
+            message: Optional message describing the issue
+
+        Returns:
+            True if reported successfully
+
+        Raises:
+            HTTPException: If receipt not found or access denied
+        """
+        # Verify ownership
+        receipt = ReceiptService.get_receipt_by_id(db, receipt_id, user_id)
+
+        # Find the review data for this receipt
+        review_data = db.query(ReceiptReviewData).filter(
+            ReceiptReviewData.receipt_id == receipt_id
+        ).first()
+
+        if not review_data:
+            logger.error(f"No review data found for receipt {receipt_id}")
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Review data not found for this receipt"
+            )
+
+        # Mark as reported
+        review_data.reported = True
+        review_data.report_message = message
+
+        db.commit()
+
+        logger.info(f"Receipt {receipt_id} marked as reported by user {user_id}")
 
         return True
 

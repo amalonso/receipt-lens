@@ -271,6 +271,13 @@ class APIClient {
         return this.delete(`/receipts/${id}`);
     }
 
+    /**
+     * Get unique store names
+     */
+    async getStores() {
+        return this.get('/receipts/stores');
+    }
+
     // ==================== Analytics Endpoints ====================
 
     /**

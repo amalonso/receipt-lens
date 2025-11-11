@@ -686,11 +686,37 @@ class ReceiptService:
         """
         receipt = ReceiptService.get_receipt_by_id(db, receipt_id, user_id)
 
-        # Update fields
+        # Extract items if present (needs special handling)
+        items_data = update_data.pop('items', None)
+
+        # Update basic fields
         for field, value in update_data.items():
             if value is not None and hasattr(receipt, field):
                 setattr(receipt, field, value)
                 logger.info(f"Updated receipt {receipt_id} field '{field}' to '{value}'")
+
+        # Update items if provided
+        if items_data is not None:
+            # Delete all existing items
+            db.query(Item).filter(Item.receipt_id == receipt_id).delete()
+            logger.info(f"Deleted existing items for receipt {receipt_id}")
+
+            # Create new items
+            for item_data in items_data:
+                # Get or create category
+                category = ReceiptService._get_or_create_category(db, item_data['category'])
+
+                item = Item(
+                    receipt_id=receipt.id,
+                    category_id=category.id,
+                    product_name=item_data['product_name'],
+                    quantity=item_data['quantity'],
+                    unit_price=item_data.get('unit_price'),
+                    total_price=item_data['total_price']
+                )
+                db.add(item)
+
+            logger.info(f"Added {len(items_data)} new items to receipt {receipt_id}")
 
         db.commit()
         db.refresh(receipt)
@@ -736,3 +762,38 @@ class ReceiptService:
         logger.info(f"Deleted receipt ID={receipt_id} for user {user_id}")
 
         return True
+
+    @staticmethod
+    def get_unique_stores(
+        db: Session,
+        user_id: int
+    ) -> List[dict]:
+        """
+        Get list of unique store names for a user, ordered by frequency.
+
+        Args:
+            db: Database session
+            user_id: User ID
+
+        Returns:
+            List of dictionaries with store_name and count
+        """
+        results = (
+            db.query(
+                Receipt.store_name,
+                func.count(Receipt.id).label('count')
+            )
+            .filter(Receipt.user_id == user_id)
+            .group_by(Receipt.store_name)
+            .order_by(func.count(Receipt.id).desc())
+            .all()
+        )
+
+        stores = [
+            {"store_name": result.store_name, "count": result.count}
+            for result in results
+        ]
+
+        logger.info(f"Retrieved {len(stores)} unique stores for user {user_id}")
+
+        return stores

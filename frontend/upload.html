@@ -383,7 +383,7 @@
                                     <div class="result-icon"><i data-lucide="check-circle" style="width: 32px; height: 32px;"></i></div>
                                     <div class="result-title">
                                         <h3>Análisis Completado</h3>
-                                        <p>Tu factura ha sido procesada exitosamente</p>
+                                        <p>Revisa los datos extraídos</p>
                                     </div>
                                 </div>
 
@@ -402,12 +402,17 @@
                                     </div>
                                 </div>
 
-                                <div style="display: flex; gap: 1rem;">
-                                    <a href="/receipts.html" class="btn btn-lg" style="flex: 1; background: white; color: var(--primary-color);">
-                                        Ver Todas las Facturas
-                                    </a>
-                                    <button class="btn btn-lg" style="flex: 1; background: rgba(255,255,255,0.2); color: white;" onclick="uploadAnother()">
-                                        Subir Otra
+                                <!-- Items Preview -->
+                                <div id="items-preview" style="background: rgba(255,255,255,0.15); border-radius: 8px; padding: 1rem; margin-top: 1rem; max-height: 300px; overflow-y: auto;">
+                                    <!-- Items will be rendered here -->
+                                </div>
+
+                                <div style="display: flex; gap: 1rem; margin-top: 1.5rem;">
+                                    <button class="btn btn-lg" style="flex: 1; background: rgba(220, 38, 38, 0.9); color: white;" onclick="discardReceipt()" id="discard-btn">
+                                        <i data-lucide="trash-2" style="width: 18px; height: 18px;"></i> Descartar
+                                    </button>
+                                    <button class="btn btn-lg" style="flex: 1; background: white; color: var(--primary-color);" onclick="editReceipt()" id="edit-btn">
+                                        <i data-lucide="edit" style="width: 18px; height: 18px;"></i> Editar
                                     </button>
                                 </div>
                             </div>
@@ -455,6 +460,8 @@
         let selectedFile = null;
         let selectedFiles = []; // For multiple mode
         let uploadMode = 'single'; // 'single' or 'multiple'
+        let currentReceiptId = null; // Store receipt ID after upload
+        let currentReceiptData = null; // Store full receipt data
 
         // Load user info
         async function loadUserInfo() {
@@ -703,24 +710,16 @@
                 if (response.success) {
                     showToast(`${selectedFiles.length} imágenes procesadas exitosamente`, 'success');
 
-                    // Show result
+                    // Store receipt ID
                     const receipt = response.data.receipt;
-                    document.getElementById('result-stats').innerHTML = `
-                        <div class="result-stat">
-                            <div class="result-stat-value">${formatCurrency(receipt.total_amount)}</div>
-                            <div class="result-stat-label">Total</div>
-                        </div>
-                        <div class="result-stat">
-                            <div class="result-stat-value">${receipt.items_count || 0}</div>
-                            <div class="result-stat-label">Items</div>
-                        </div>
-                        <div class="result-stat">
-                            <div class="result-stat-value">${receipt.store_name}</div>
-                            <div class="result-stat-label">Tienda</div>
-                        </div>
-                    `;
+                    currentReceiptId = receipt.id;
 
-                    document.getElementById('analysis-result').classList.add('active');
+                    // Fetch full receipt details including items
+                    await showReceiptPreview(receipt.id);
+
+                    // Clear upload form
+                    clearMultipleFiles();
+                    document.getElementById('multiple-preview-container').style.display = 'none';
 
                     // Hide upload UI
                     setTimeout(() => {
@@ -773,24 +772,16 @@
                 if (response.success) {
                     showToast('Factura analizada exitosamente', 'success');
 
-                    // Show result
+                    // Store receipt ID
                     const receipt = response.data.receipt;
-                    document.getElementById('result-stats').innerHTML = `
-                        <div class="result-stat">
-                            <div class="result-stat-value">${formatCurrency(receipt.total_amount)}</div>
-                            <div class="result-stat-label">Total</div>
-                        </div>
-                        <div class="result-stat">
-                            <div class="result-stat-value">${receipt.items_count || 0}</div>
-                            <div class="result-stat-label">Items</div>
-                        </div>
-                        <div class="result-stat">
-                            <div class="result-stat-value">${receipt.store_name}</div>
-                            <div class="result-stat-label">Tienda</div>
-                        </div>
-                    `;
+                    currentReceiptId = receipt.id;
 
-                    document.getElementById('analysis-result').classList.add('active');
+                    // Fetch full receipt details including items
+                    await showReceiptPreview(receipt.id);
+
+                    // Clear upload form
+                    clearFile();
+                    document.getElementById('preview-container').classList.remove('active');
 
                     // Hide upload UI
                     setTimeout(() => {
@@ -816,6 +807,108 @@
             document.getElementById('upload-btn-multiple').style.display = 'block';
             clearFile();
             clearMultipleFiles();
+            currentReceiptId = null;
+            currentReceiptData = null;
+        }
+
+        async function showReceiptPreview(receiptId) {
+            try {
+                // Fetch full receipt details
+                const response = await window.api.getReceipt(receiptId);
+
+                if (response.success) {
+                    currentReceiptData = response.data;
+                    const data = response.data;
+                    const items = data.items || [];
+
+                    // Update stats
+                    document.getElementById('result-stats').innerHTML = `
+                        <div class="result-stat">
+                            <div class="result-stat-value">${formatCurrency(data.total_amount)}</div>
+                            <div class="result-stat-label">Total</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${items.length}</div>
+                            <div class="result-stat-label">Items</div>
+                        </div>
+                        <div class="result-stat">
+                            <div class="result-stat-value">${data.store_name}</div>
+                            <div class="result-stat-label">Tienda</div>
+                        </div>
+                    `;
+
+                    // Show items preview
+                    const itemsPreview = document.getElementById('items-preview');
+                    if (items.length > 0) {
+                        itemsPreview.innerHTML = `
+                            <div style="font-weight: 600; margin-bottom: 0.75rem; color: white;">Productos detectados:</div>
+                            ${items.map((item, index) => `
+                                <div style="display: flex; justify-content: space-between; padding: 0.5rem 0; border-bottom: 1px solid rgba(255,255,255,0.2);">
+                                    <div style="flex: 1;">
+                                        <span style="color: rgba(255,255,255,0.9);">${index + 1}. ${item.product_name}</span>
+                                        <span style="font-size: 0.75rem; color: rgba(255,255,255,0.7); margin-left: 0.5rem;">(${item.category})</span>
+                                    </div>
+                                    <div style="text-align: right; color: white;">
+                                        <div>${item.quantity} × ${formatCurrency(item.unit_price || 0)}</div>
+                                        <div style="font-weight: 600;">${formatCurrency(item.total_price)}</div>
+                                    </div>
+                                </div>
+                            `).join('')}
+                        `;
+                    } else {
+                        itemsPreview.innerHTML = '<div style="color: rgba(255,255,255,0.8); text-align: center;">No se detectaron items</div>';
+                    }
+
+                    document.getElementById('analysis-result').classList.add('active');
+                    lucide.createIcons();
+                }
+            } catch (error) {
+                console.error('Error fetching receipt details:', error);
+                showToast('Error al cargar los detalles de la factura', 'error');
+            }
+        }
+
+        async function discardReceipt() {
+            if (!currentReceiptId) return;
+
+            if (!confirm('¿Estás seguro que deseas descartar esta factura? Esta acción no se puede deshacer.')) {
+                return;
+            }
+
+            const discardBtn = document.getElementById('discard-btn');
+            const editBtn = document.getElementById('edit-btn');
+
+            discardBtn.disabled = true;
+            editBtn.disabled = true;
+            discardBtn.innerHTML = '<div class="spinner spinner-sm"></div> Eliminando...';
+
+            try {
+                const response = await window.api.deleteReceipt(currentReceiptId);
+
+                if (response.success) {
+                    showToast('Factura descartada exitosamente', 'success');
+
+                    // Reset form
+                    document.getElementById('analysis-result').classList.remove('active');
+                    document.getElementById('upload-btn').style.display = 'block';
+                    document.getElementById('upload-btn-multiple').style.display = 'block';
+                    currentReceiptId = null;
+                    currentReceiptData = null;
+                } else {
+                    throw new Error(response.error || 'Error al eliminar');
+                }
+            } catch (error) {
+                showToast(error.message || 'Error al descartar la factura', 'error');
+                discardBtn.disabled = false;
+                editBtn.disabled = false;
+                discardBtn.innerHTML = '<i data-lucide="trash-2" style="width: 18px; height: 18px;"></i> Descartar';
+                lucide.createIcons();
+            }
+        }
+
+        function editReceipt() {
+            if (!currentReceiptId) return;
+            window.location.href = `/receipt-detail.html?id=${currentReceiptId}&edit=true`;
         }
 
         function handleLogout() {

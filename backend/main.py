@@ -80,10 +80,25 @@ async def lifespan(app: FastAPI):
         except Exception as e:
             logger.error(f"Database initialization failed: {e}")
 
+    # Start background scheduler for periodic tasks
+    try:
+        from backend.scheduler import start_scheduler
+        start_scheduler()
+    except Exception as e:
+        logger.error(f"Failed to start scheduler: {e}")
+
     yield
 
     # Shutdown
     logger.info("Shutting down Receipt Lens application...")
+
+    # Stop scheduler
+    try:
+        from backend.scheduler import stop_scheduler
+        stop_scheduler()
+    except Exception as e:
+        logger.error(f"Failed to stop scheduler: {e}")
+
     engine.dispose()
 
 

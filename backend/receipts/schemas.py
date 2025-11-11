@@ -151,3 +151,78 @@ class UploadStats(BaseModel):
     total_items: int
     total_spent: float
     stores_count: int
+
+
+class ReceiptReviewDataResponse(BaseModel):
+    """Response schema for receipt review data."""
+
+    id: int
+    receipt_id: int
+    image_path: str
+    analyzer_used: str
+    analysis_response: str  # JSON string
+    reported: bool
+    report_message: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
+    created_at: datetime
+
+    class Config:
+        from_attributes = True
+
+
+class ReceiptReviewListItem(BaseModel):
+    """Schema for receipt review data in list view."""
+
+    id: int
+    receipt_id: int
+    analyzer_used: str
+    reported: bool
+    created_at: datetime
+    # Receipt information
+    store_name: str
+    purchase_date: date
+    total_amount: float
+
+    class Config:
+        from_attributes = True
+
+
+class ReceiptReviewListResponse(BaseModel):
+    """Paginated list of receipt review data."""
+
+    reviews: List[ReceiptReviewListItem]
+    total: int
+    page: int
+    page_size: int
+    total_pages: int
+
+
+class ReportReceiptRequest(BaseModel):
+    """Request schema for reporting a problematic receipt."""
+
+    message: Optional[str] = Field(None, description="Optional message describing the issue")
+
+    class Config:
+        from_attributes = True
+
+
+class TestAnalyzerRequest(BaseModel):
+    """Request schema for testing an analyzer on a receipt."""
+
+    analyzer_name: str = Field(..., description="Name of the analyzer to test (claude, openai, google_vision, etc.)")
+
+    class Config:
+        from_attributes = True
+
+
+class TestAnalyzerResponse(BaseModel):
+    """Response schema for analyzer test results."""
+
+    success: bool
+    analyzer_name: str
+    analysis_response: Optional[str] = None  # JSON string
+    error: Optional[str] = None
+    processing_time_ms: Optional[int] = None
+
+    class Config:
+        from_attributes = True

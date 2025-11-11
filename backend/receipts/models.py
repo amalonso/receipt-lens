@@ -4,7 +4,7 @@ Defines Receipt, Item, and Category models for database persistence.
 """
 
 from datetime import datetime, date
-from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Numeric
+from sqlalchemy import Column, Integer, String, DateTime, Date, Boolean, ForeignKey, Numeric, Text
 from sqlalchemy.orm import relationship
 
 from backend.database.base import Base
@@ -152,5 +152,68 @@ class Item(Base):
             "quantity": float(self.quantity) if self.quantity else 1.0,
             "unit_price": float(self.unit_price) if self.unit_price else None,
             "total_price": float(self.total_price) if self.total_price else 0.0,
+            "created_at": self.created_at.isoformat() if self.created_at else None
+        }
+
+
+class ReceiptReviewData(Base):
+    """
+    Review data for receipts - stores temporary data for admin review.
+
+    This table stores the original image, analyzer used, and raw analysis response
+    to allow administrators to review the accuracy of the analysis and test
+    different analyzers. Data is periodically cleaned based on retention settings.
+
+    Attributes:
+        id: Primary key
+        receipt_id: Foreign key to Receipt
+        image_path: Path to the original uploaded image (copy for review)
+        analyzer_used: Name of the analyzer that processed this receipt
+        analysis_response: Raw JSON response from the analyzer
+        reported: Whether this receipt was reported by the user as problematic
+        report_message: Optional message from user when reporting
+        reviewed_at: Timestamp when admin reviewed this (nullable)
+        created_at: Timestamp of creation
+        receipt: Relationship to Receipt model
+    """
+
+    __tablename__ = "receipt_review_data"
+
+    id = Column(Integer, primary_key=True, index=True)
+    receipt_id = Column(Integer, ForeignKey("receipts.id", ondelete="CASCADE"), nullable=False)
+    image_path = Column(String(255), nullable=False)
+    analyzer_used = Column(String(50), nullable=False, index=True)
+    analysis_response = Column(Text, nullable=False)  # JSON string
+    reported = Column(Boolean, default=False, nullable=False, index=True)
+    report_message = Column(Text, nullable=True)
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    # Relationships
+    receipt = relationship("Receipt", backref="review_data")
+
+    def __repr__(self) -> str:
+        """String representation of ReceiptReviewData."""
+        return (
+            f"<ReceiptReviewData(id={self.id}, receipt_id={self.receipt_id}, "
+            f"analyzer='{self.analyzer_used}', reported={self.reported})>"
+        )
+
+    def to_dict(self) -> dict:
+        """
+        Convert ReceiptReviewData object to dictionary.
+
+        Returns:
+            dict: Review data
+        """
+        return {
+            "id": self.id,
+            "receipt_id": self.receipt_id,
+            "image_path": self.image_path,
+            "analyzer_used": self.analyzer_used,
+            "analysis_response": self.analysis_response,
+            "reported": self.reported,
+            "report_message": self.report_message,
+            "reviewed_at": self.reviewed_at.isoformat() if self.reviewed_at else None,
             "created_at": self.created_at.isoformat() if self.created_at else None
         }

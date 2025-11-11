@@ -20,6 +20,7 @@ from backend.receipts.schemas import (
     ReceiptListItem,
     ReceiptResponse,
     ReceiptUpdateRequest,
+    ReportReceiptRequest,
     ItemSchema
 )
 
@@ -357,6 +358,41 @@ async def delete_receipt(
         "success": True,
         "data": {
             "message": f"Receipt {receipt_id} deleted successfully"
+        },
+        "error": None
+    }
+
+
+@router.post(
+    "/{receipt_id}/report",
+    response_model=ReceiptResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Report receipt analysis issue",
+    description="Report a problem with the receipt analysis for admin review"
+)
+async def report_receipt(
+    receipt_id: int,
+    report_data: ReportReceiptRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Report a problem with receipt analysis.
+
+    - **receipt_id**: Receipt ID
+    - **message**: Optional message describing the issue
+
+    This will mark the receipt for admin review.
+    The admin can then review the analysis and test different analyzers.
+    """
+    logger.info(f"POST /api/receipts/{receipt_id}/report - user_id: {current_user.id}")
+
+    ReceiptService.report_receipt(db, receipt_id, current_user.id, report_data.message)
+
+    return {
+        "success": True,
+        "data": {
+            "message": "Gracias por tu feedback. Tu reporte será revisado por un administrador."
         },
         "error": None
     }

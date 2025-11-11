@@ -16,6 +16,7 @@ from backend.database.base import Base, import_models
 from backend.auth.models import User
 from backend.auth.service import AuthService
 from backend.auth.schemas import UserRegisterRequest
+from backend.admin.models import SystemConfig
 
 
 def init_database():
@@ -29,6 +30,42 @@ def init_database():
     Base.metadata.create_all(bind=engine)
 
     print("✅ Database tables created successfully!")
+
+    # Initialize default system configurations
+    init_default_configs()
+
+
+def init_default_configs():
+    """Initialize default system configurations."""
+    print("🔧 Initializing default system configurations...")
+
+    db = get_db_session()
+
+    try:
+        # Check if review_data_retention_days config exists
+        config = db.query(SystemConfig).filter(
+            SystemConfig.config_key == "review_data_retention_days"
+        ).first()
+
+        if not config:
+            # Create default config: 30 days retention
+            config = SystemConfig(
+                config_key="review_data_retention_days",
+                config_value="30",
+                description="Number of days to retain receipt review data before automatic cleanup"
+            )
+            db.add(config)
+            db.commit()
+            print("   ✅ Created default config: review_data_retention_days = 30 days")
+        else:
+            print(f"   ℹ️  Config already exists: review_data_retention_days = {config.config_value} days")
+
+    except Exception as e:
+        print(f"   ⚠️  Error initializing configs: {str(e)}")
+        db.rollback()
+
+    finally:
+        db.close()
 
 
 def create_admin_user():

@@ -28,6 +28,13 @@ from backend.admin.schemas import (
     ReceiptAdminResponse,
     AdminApiResponse
 )
+from backend.receipts.schemas import (
+    ReceiptReviewDataResponse,
+    ReceiptReviewListItem,
+    ReceiptReviewListResponse,
+    TestAnalyzerRequest,
+    TestAnalyzerResponse
+)
 
 logger = logging.getLogger(__name__)
 
@@ -530,6 +537,171 @@ async def get_all_receipts(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="Failed to fetch receipts"
+        )
+
+
+# ============ RECEIPT REVIEW MANAGEMENT ============
+
+@router.get("/receipt-reviews", response_model=ReceiptReviewListResponse)
+async def get_receipt_reviews(
+    page: int = Query(1, ge=1),
+    page_size: int = Query(20, ge=1, le=100),
+    reported_only: Optional[bool] = Query(None, description="Filter only reported receipts"),
+    analyzer_used: Optional[str] = Query(None, description="Filter by analyzer used"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Get all receipt review data for admin review.
+
+    **Requires admin privileges.**
+
+    Query parameters:
+    - page: Page number (default: 1)
+    - page_size: Items per page (default: 20, max: 100)
+    - reported_only: Show only reported receipts (default: None, shows all)
+    - analyzer_used: Filter by analyzer (claude, openai, google_vision, etc.)
+    """
+    try:
+        skip = (page - 1) * page_size
+        reviews, total = AdminService.get_receipt_reviews(
+            db=db,
+            skip=skip,
+            limit=page_size,
+            reported_only=reported_only,
+            analyzer_used=analyzer_used
+        )
+
+        total_pages = (total + page_size - 1) // page_size if total > 0 else 1
+
+        return ReceiptReviewListResponse(
+            reviews=reviews,
+            total=total,
+            page=page,
+            page_size=page_size,
+            total_pages=total_pages
+        )
+    except Exception as e:
+        logger.error(f"Error fetching receipt reviews: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch receipt reviews"
+        )
+
+
+@router.get("/receipt-reviews/{review_id}", response_model=ReceiptReviewDataResponse)
+async def get_receipt_review_detail(
+    review_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Get detailed information about a receipt review.
+
+    **Requires admin privileges.**
+
+    Includes the full analysis response and receipt details.
+    """
+    try:
+        review = AdminService.get_receipt_review_detail(db, review_id)
+        return review
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching receipt review detail: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to fetch receipt review detail"
+        )
+
+
+@router.post("/receipt-reviews/{review_id}/test-analyzer", response_model=TestAnalyzerResponse)
+async def test_analyzer_on_receipt(
+    review_id: int,
+    request: TestAnalyzerRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Test a different analyzer on a receipt.
+
+    **Requires admin privileges.**
+
+    Allows admins to test different analyzers on the original receipt image
+    to compare results and troubleshoot analysis issues.
+    """
+    try:
+        result = await AdminService.test_analyzer_on_receipt(
+            db, review_id, request.analyzer_name
+        )
+        return result
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error testing analyzer: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to test analyzer: {str(e)}"
+        )
+
+
+@router.patch("/receipt-reviews/{review_id}/mark-reviewed")
+async def mark_review_as_reviewed(
+    review_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Mark a receipt review as reviewed.
+
+    **Requires admin privileges.**
+
+    Updates the reviewed_at timestamp to track when admin reviewed this receipt.
+    """
+    try:
+        AdminService.mark_review_as_reviewed(db, review_id)
+        return {
+            "success": True,
+            "message": "Receipt review marked as reviewed"
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error marking review as reviewed: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to mark review as reviewed"
+        )
+
+
+# ============ MAINTENANCE ============
+
+@router.post("/maintenance/cleanup-review-data")
+async def run_cleanup_review_data(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_admin_user)
+):
+    """
+    Run the review data cleanup task immediately.
+
+    **Requires admin privileges.**
+
+    This will delete ReceiptReviewData records older than the configured retention period.
+    Note: This only deletes review data, never the actual receipt data.
+    """
+    try:
+        from backend.scheduler import run_cleanup_now
+        result = run_cleanup_now()
+        return {
+            "success": True,
+            "data": result,
+            "message": f"Cleanup completed: {result.get('deleted_count', 0)} records deleted"
+        }
+    except Exception as e:
+        logger.error(f"Error running cleanup: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to run cleanup: {str(e)}"
         )
 
 

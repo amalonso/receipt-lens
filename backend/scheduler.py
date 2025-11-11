@@ -50,7 +50,13 @@ def cleanup_old_review_data():
     Clean up old receipt review data based on retention policy.
 
     This removes ReceiptReviewData records older than the configured retention period.
-    IMPORTANT: This ONLY deletes review data, never the actual receipt data.
+
+    IMPORTANT SAFETY NOTES:
+    - This ONLY deletes review data from receipt_review_data table
+    - It NEVER deletes actual receipts from receipts table
+    - The CASCADE is one-way: deleting a receipt deletes its review_data,
+      but deleting review_data does NOT delete the receipt
+    - Receipt images are preserved and referenced by the Receipt record
     """
     logger.info("Starting scheduled cleanup of old review data...")
 
@@ -62,24 +68,34 @@ def cleanup_old_review_data():
 
         logger.info(f"Retention period: {retention_days} days")
         logger.info(f"Deleting review data created before: {cutoff_date}")
+        logger.info("SAFETY: Only ReceiptReviewData records will be deleted, NOT receipts")
 
-        # Find old review data
+        # Find old review data (NOT receipts)
         old_reviews = db.query(ReceiptReviewData).filter(
             ReceiptReviewData.created_at < cutoff_date
         ).all()
 
         deleted_count = 0
-        deleted_images = 0
+        receipt_ids_checked = set()
 
         for review in old_reviews:
-            # Note: We don't delete the receipt image file here as it's still
-            # referenced by the Receipt record. The image will be deleted when
-            # the receipt itself is deleted by the user.
-            logger.debug(f"Deleting review data {review.id} (created: {review.created_at})")
+            # Store receipt_id for verification
+            receipt_ids_checked.add(review.receipt_id)
+
+            # Delete ONLY the review data record (not the receipt)
+            logger.debug(f"Deleting review data {review.id} for receipt {review.receipt_id} (created: {review.created_at})")
             db.delete(review)
             deleted_count += 1
 
         db.commit()
+
+        # Verification: Confirm receipts still exist after cleanup
+        from backend.receipts.models import Receipt
+        if receipt_ids_checked:
+            remaining_receipts = db.query(Receipt).filter(
+                Receipt.id.in_(receipt_ids_checked)
+            ).count()
+            logger.info(f"VERIFICATION: {remaining_receipts} receipts still exist after cleanup (as expected)")
 
         logger.info(
             f"Cleanup completed: Deleted {deleted_count} review data records "

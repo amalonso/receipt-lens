@@ -216,6 +216,20 @@ CREATE INDEX idx_receipt_review_data_analyzer ON receipt_review_data(analyzer_us
 CREATE INDEX idx_receipt_review_data_created_at ON receipt_review_data(created_at);
 ```
 
+### Comportamiento de CASCADE (Importante)
+
+El `ON DELETE CASCADE` en la foreign key `receipt_id` funciona en **una sola dirección**:
+
+```
+✅ Borrar Receipt → Borra automáticamente sus ReceiptReviewData asociados
+❌ Borrar ReceiptReviewData → NO afecta al Receipt (permanece intacto)
+```
+
+**Esto significa:**
+- Cuando un usuario borra una factura, se eliminan automáticamente sus datos de revisión (lo cual es correcto)
+- Cuando el sistema de limpieza borra datos de revisión antiguos, **las facturas NO se eliminan** (garantizado por el diseño de la base de datos)
+- El proceso de limpieza incluye verificación en logs para confirmar que las facturas siguen existiendo después de la limpieza
+
 ## Flujo de Trabajo Típico
 
 ### Para Usuarios

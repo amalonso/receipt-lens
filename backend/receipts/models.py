@@ -164,6 +164,12 @@ class ReceiptReviewData(Base):
     to allow administrators to review the accuracy of the analysis and test
     different analyzers. Data is periodically cleaned based on retention settings.
 
+    CASCADE BEHAVIOR (IMPORTANT):
+    - The CASCADE on receipt_id means: "If a Receipt is deleted, delete its ReceiptReviewData"
+    - It does NOT mean: "If ReceiptReviewData is deleted, delete the Receipt"
+    - This is a one-way relationship ensuring data integrity
+    - When the cleanup process deletes old ReceiptReviewData, the Receipt remains intact
+
     Attributes:
         id: Primary key
         receipt_id: Foreign key to Receipt
@@ -180,6 +186,7 @@ class ReceiptReviewData(Base):
     __tablename__ = "receipt_review_data"
 
     id = Column(Integer, primary_key=True, index=True)
+    # CASCADE direction: Receipt deletion → ReceiptReviewData deletion (NOT the other way)
     receipt_id = Column(Integer, ForeignKey("receipts.id", ondelete="CASCADE"), nullable=False)
     image_path = Column(String(255), nullable=False)
     analyzer_used = Column(String(50), nullable=False, index=True)

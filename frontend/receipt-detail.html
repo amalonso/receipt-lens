@@ -57,6 +57,116 @@
             font-weight: 700;
             font-size: 1.125rem;
         }
+
+        .edit-mode .view-only {
+            display: none !important;
+        }
+
+        .view-mode .edit-only {
+            display: none !important;
+        }
+
+        .edit-input {
+            padding: 0.5rem;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            width: 100%;
+            font-size: 0.875rem;
+        }
+
+        .edit-input:focus {
+            outline: none;
+            border-color: var(--primary-color);
+        }
+
+        .error-message {
+            color: #dc2626;
+            font-size: 0.75rem;
+            margin-top: 0.25rem;
+            font-weight: 600;
+        }
+
+        .store-autocomplete {
+            position: relative;
+        }
+
+        .store-suggestions {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid var(--border-color);
+            border-radius: 0.375rem;
+            margin-top: 0.25rem;
+            max-height: 200px;
+            overflow-y: auto;
+            z-index: 100;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            display: none;
+        }
+
+        .store-suggestions.active {
+            display: block;
+        }
+
+        .store-suggestion-item {
+            padding: 0.75rem;
+            cursor: pointer;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .store-suggestion-item:hover {
+            background-color: var(--bg-tertiary);
+        }
+
+        .store-suggestion-item:last-child {
+            border-bottom: none;
+        }
+
+        .item-row-edit {
+            background-color: var(--bg-tertiary);
+        }
+
+        .item-row-edit td {
+            padding: 0.5rem !important;
+        }
+
+        .delete-item-btn {
+            background-color: #dc2626;
+            color: white;
+            border: none;
+            border-radius: 0.375rem;
+            padding: 0.5rem 0.75rem;
+            cursor: pointer;
+            font-size: 0.75rem;
+        }
+
+        .delete-item-btn:hover {
+            background-color: #b91c1c;
+        }
+
+        .add-item-btn {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            justify-content: center;
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px dashed var(--border-color);
+            background: var(--bg-secondary);
+            color: var(--text-secondary);
+            border-radius: 0.375rem;
+            cursor: pointer;
+            margin-top: 1rem;
+            transition: all 0.2s;
+        }
+
+        .add-item-btn:hover {
+            border-color: var(--primary-color);
+            color: var(--primary-color);
+            background: var(--bg-tertiary);
+        }
     </style>
 </head>
 <body>
@@ -118,7 +228,16 @@
                     <h1>Detalle de Factura</h1>
                 </div>
                 <div class="topbar-actions">
-                    <button class="btn btn-danger" onclick="deleteReceipt()" id="delete-btn">
+                    <button class="btn btn-primary view-only" onclick="enterEditMode()" id="edit-mode-btn">
+                        <i data-lucide="edit" style="width: 16px; height: 16px;"></i> Editar
+                    </button>
+                    <button class="btn btn-success edit-only" onclick="saveChanges()" id="save-btn" style="display: none;">
+                        <i data-lucide="save" style="width: 16px; height: 16px;"></i> Guardar
+                    </button>
+                    <button class="btn btn-outline edit-only" onclick="cancelEdit()" style="display: none;">
+                        <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cancelar
+                    </button>
+                    <button class="btn btn-danger view-only" onclick="deleteReceipt()" id="delete-btn">
                         <i data-lucide="trash-2" style="width: 16px; height: 16px;"></i> Eliminar
                     </button>
                 </div>
@@ -146,7 +265,7 @@
                     ← Volver a Mis Facturas
                 </a>
 
-                <div class="detail-container" id="detail-container">
+                <div class="detail-container view-mode" id="detail-container">
                     <div class="flex items-center justify-center" style="padding: 3rem;">
                         <div class="spinner"></div>
                     </div>
@@ -163,6 +282,18 @@
 
         let receiptId = null;
         let receiptData = null;
+        let originalReceiptData = null; // Backup for cancel
+        let storesList = []; // List of available stores for autocomplete
+        let isEditMode = false;
+
+        // Get receipt ID from URL
+        const params = parseQuery();
+        receiptId = params.id;
+        const startInEditMode = params.edit === 'true';
+
+        if (!receiptId) {
+            window.location.href = '/receipts.html';
+        }
 
         // Load user info
         async function loadUserInfo() {
@@ -186,12 +317,16 @@
             addAdminNavigation(user);
         }
 
-        // Get receipt ID from URL
-        const params = parseQuery();
-        receiptId = params.id;
-
-        if (!receiptId) {
-            window.location.href = '/receipts.html';
+        // Load stores for autocomplete
+        async function loadStores() {
+            try {
+                const response = await window.api.getStores();
+                if (response.success) {
+                    storesList = response.data.stores || [];
+                }
+            } catch (error) {
+                console.error('Error loading stores:', error);
+            }
         }
 
         // Load receipt details
@@ -205,7 +340,13 @@
 
                 if (response.success) {
                     receiptData = response.data;
+                    originalReceiptData = JSON.parse(JSON.stringify(receiptData)); // Deep copy
                     renderReceiptDetail(receiptData);
+
+                    // Enter edit mode if requested
+                    if (startInEditMode) {
+                        setTimeout(() => enterEditMode(), 500);
+                    }
                 } else {
                     throw new Error(response.error || 'Error al cargar la factura');
                 }
@@ -239,22 +380,55 @@
                 <div class="receipt-header">
                     <div class="flex justify-between items-center">
                         <div style="flex: 1;">
-                            <div style="display: flex; align-items: center; gap: 1rem; margin-bottom: 0.5rem;">
-                                <h2 id="store-name-display" style="margin: 0;">${data.store_name}</h2>
-                                <button id="edit-store-btn" class="btn btn-outline btn-sm" style="background: rgba(255,255,255,0.2); border-color: rgba(255,255,255,0.4); color: white;" onclick="editStoreName()"><i data-lucide="edit" style="width: 14px; height: 14px;"></i> Editar</button>
+                            <!-- View Mode -->
+                            <h2 class="view-only" id="store-name-display" style="margin-bottom: 0.5rem;">${data.store_name}</h2>
+
+                            <!-- Edit Mode -->
+                            <div class="edit-only store-autocomplete" style="display: none; margin-bottom: 0.5rem;">
+                                <input
+                                    type="text"
+                                    id="store-name-input"
+                                    value="${data.store_name}"
+                                    placeholder="Nombre del supermercado"
+                                    style="padding: 0.5rem; border-radius: 0.375rem; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.9); color: #333; width: 100%; max-width: 400px; font-size: 1.25rem; font-weight: 600;"
+                                    oninput="showStoresSuggestions(this.value)"
+                                    onfocus="showStoresSuggestions(this.value)"
+                                >
+                                <div class="store-suggestions" id="store-suggestions"></div>
                             </div>
-                            <div id="store-name-edit" style="display: none; margin-bottom: 0.5rem;">
-                                <div style="display: flex; gap: 0.5rem; align-items: center;">
-                                    <input type="text" id="store-name-input" value="${data.store_name}" style="padding: 0.5rem; border-radius: 0.375rem; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.9); color: #333; flex: 1; max-width: 300px;">
-                                    <button onclick="saveStoreName()" class="btn btn-sm" style="background: rgba(255,255,255,0.9); color: #333;"><i data-lucide="save" style="width: 14px; height: 14px;"></i> Guardar</button>
-                                    <button onclick="cancelEdit()" class="btn btn-sm" style="background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.4); color: white;"><i data-lucide="x" style="width: 14px; height: 14px;"></i> Cancelar</button>
-                                </div>
+
+                            <!-- Date View -->
+                            <p class="view-only" style="opacity: 0.9; margin-bottom: 0;">${formatDate(data.purchase_date)}</p>
+
+                            <!-- Date Edit -->
+                            <div class="edit-only" style="display: none;">
+                                <input
+                                    type="date"
+                                    id="purchase-date-input"
+                                    value="${data.purchase_date}"
+                                    style="padding: 0.5rem; border-radius: 0.375rem; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.9); color: #333; font-size: 0.875rem;"
+                                >
                             </div>
-                            <p style="opacity: 0.9; margin-bottom: 0;">${formatDate(data.purchase_date)}</p>
                         </div>
                         <div style="text-align: right;">
-                            <div style="font-size: 2.5rem; font-weight: 700;">${formatCurrency(data.total_amount)}</div>
-                            <div style="opacity: 0.9;">${items.length} productos</div>
+                            <!-- Total View -->
+                            <div class="view-only" style="font-size: 2.5rem; font-weight: 700;">${formatCurrency(data.total_amount)}</div>
+
+                            <!-- Total Edit -->
+                            <div class="edit-only" style="display: none;">
+                                <input
+                                    type="number"
+                                    id="total-amount-input"
+                                    value="${data.total_amount}"
+                                    step="0.01"
+                                    min="0"
+                                    style="padding: 0.5rem; border-radius: 0.375rem; border: 1px solid rgba(255,255,255,0.4); background: rgba(255,255,255,0.9); color: #333; font-size: 1.5rem; font-weight: 700; text-align: right; width: 150px;"
+                                    oninput="validateTotal()"
+                                >
+                                <div id="total-error" class="error-message" style="display: none; color: #fecaca; background: rgba(220, 38, 38, 0.2); padding: 0.5rem; border-radius: 0.375rem; margin-top: 0.5rem;"></div>
+                            </div>
+
+                            <div style="opacity: 0.9;" id="items-count">${items.length} productos</div>
                         </div>
                     </div>
                 </div>
@@ -264,7 +438,7 @@
                     <div class="card">
                         <div class="card-body">
                             <div class="text-secondary" style="font-size: 0.875rem; margin-bottom: 0.5rem;">Total de Items</div>
-                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--primary-color);">${items.length}</div>
+                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--primary-color);" id="total-items-count">${items.length}</div>
                         </div>
                     </div>
 
@@ -278,7 +452,7 @@
                     <div class="card">
                         <div class="card-body">
                             <div class="text-secondary" style="font-size: 0.875rem; margin-bottom: 0.5rem;">Promedio por Item</div>
-                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--info-color);">${formatCurrency(data.total_amount / items.length)}</div>
+                            <div style="font-size: 1.75rem; font-weight: 700; color: var(--info-color);" id="average-per-item">${items.length > 0 ? formatCurrency(data.total_amount / items.length) : formatCurrency(0)}</div>
                         </div>
                     </div>
                 </div>
@@ -297,28 +471,19 @@
                                     <th style="text-align: center;">Cantidad</th>
                                     <th style="text-align: right;">Precio Unitario</th>
                                     <th style="text-align: right;">Total</th>
+                                    <th class="edit-only" style="width: 80px; display: none;">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                ${items.map(item => `
-                                    <tr>
-                                        <td><strong>${item.product_name}</strong></td>
-                                        <td>
-                                            <span class="category-badge" style="background-color: ${getCategoryColor(item.category)};">
-                                                ${item.category}
-                                            </span>
-                                        </td>
-                                        <td style="text-align: center;">${item.quantity}</td>
-                                        <td style="text-align: right;">${formatCurrency(item.unit_price)}</td>
-                                        <td style="text-align: right;"><strong>${formatCurrency(item.total_price)}</strong></td>
-                                    </tr>
-                                `).join('')}
-                                <tr class="total-row">
-                                    <td colspan="4" style="text-align: right;">TOTAL</td>
-                                    <td style="text-align: right;">${formatCurrency(data.total_amount)}</td>
-                                </tr>
+                            <tbody id="items-tbody">
+                                <!-- Items will be rendered here -->
                             </tbody>
                         </table>
+                    </div>
+                    <div class="card-body edit-only" style="display: none;">
+                        <button class="add-item-btn" onclick="addNewItem()">
+                            <i data-lucide="plus" style="width: 16px; height: 16px;"></i>
+                            Añadir Producto
+                        </button>
                     </div>
                 </div>
 
@@ -349,8 +514,309 @@
                     </div>
                 </div>
             `;
+
+            renderItems(items);
             lucide.createIcons();
         }
+
+        function renderItems(items) {
+            const tbody = document.getElementById('items-tbody');
+            if (!tbody) return;
+
+            const itemsHTML = items.map((item, index) => {
+                const itemId = item.id || `new-${index}`;
+                return `
+                    <tr class="view-only" data-item-id="${itemId}">
+                        <td><strong>${item.product_name}</strong></td>
+                        <td>
+                            <span class="category-badge" style="background-color: ${getCategoryColor(item.category)};">
+                                ${item.category}
+                            </span>
+                        </td>
+                        <td style="text-align: center;">${item.quantity}</td>
+                        <td style="text-align: right;">${formatCurrency(item.unit_price || 0)}</td>
+                        <td style="text-align: right;"><strong>${formatCurrency(item.total_price)}</strong></td>
+                    </tr>
+                    <tr class="edit-only item-row-edit" data-item-id="${itemId}" style="display: none;">
+                        <td>
+                            <input type="text" class="edit-input item-name" value="${item.product_name}" placeholder="Nombre del producto" data-index="${index}">
+                        </td>
+                        <td>
+                            <select class="edit-input item-category" data-index="${index}">
+                                ${['bebidas', 'carne', 'verduras', 'lácteos', 'panadería', 'limpieza', 'ocio', 'otros'].map(cat =>
+                                    `<option value="${cat}" ${cat === item.category ? 'selected' : ''}>${cat}</option>`
+                                ).join('')}
+                            </select>
+                        </td>
+                        <td>
+                            <input type="number" class="edit-input item-quantity" value="${item.quantity}" step="0.001" min="0" placeholder="Cantidad" data-index="${index}" oninput="updateItemTotal(${index})">
+                        </td>
+                        <td>
+                            <input type="number" class="edit-input item-unit-price" value="${item.unit_price || 0}" step="0.01" min="0" placeholder="Precio unitario" data-index="${index}" oninput="updateItemTotal(${index})">
+                        </td>
+                        <td>
+                            <input type="number" class="edit-input item-total-price" value="${item.total_price}" step="0.01" min="0" placeholder="Total" data-index="${index}" oninput="validateTotal()">
+                            <div class="item-error-${index} error-message" style="display: none;"></div>
+                        </td>
+                        <td>
+                            <button class="delete-item-btn" onclick="deleteItem(${index})">
+                                <i data-lucide="trash-2" style="width: 14px; height: 14px;"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+
+            const calculatedTotal = items.reduce((sum, item) => sum + parseFloat(item.total_price || 0), 0);
+            const totalRow = `
+                <tr class="total-row">
+                    <td colspan="${isEditMode ? '4' : '4'}" style="text-align: right;">TOTAL</td>
+                    <td style="text-align: right;" id="calculated-total">${formatCurrency(calculatedTotal)}</td>
+                    ${isEditMode ? '<td></td>' : ''}
+                </tr>
+            `;
+
+            tbody.innerHTML = itemsHTML + totalRow;
+            lucide.createIcons();
+
+            // Update total after rendering
+            if (isEditMode) {
+                validateTotal();
+            }
+        }
+
+        function enterEditMode() {
+            isEditMode = true;
+            const container = document.getElementById('detail-container');
+            container.classList.remove('view-mode');
+            container.classList.add('edit-mode');
+
+            // Re-render items to show edit inputs
+            renderItems(receiptData.items || []);
+
+            lucide.createIcons();
+        }
+
+        function cancelEdit() {
+            if (confirm('¿Deseas descartar los cambios realizados?')) {
+                isEditMode = false;
+                receiptData = JSON.parse(JSON.stringify(originalReceiptData)); // Restore from backup
+
+                const container = document.getElementById('detail-container');
+                container.classList.remove('edit-mode');
+                container.classList.add('view-mode');
+
+                renderReceiptDetail(receiptData);
+            }
+        }
+
+        async function saveChanges() {
+            const saveBtn = document.getElementById('save-btn');
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<div class="spinner spinner-sm"></div> Guardando...';
+
+            try {
+                // Collect data from form
+                const storeName = document.getElementById('store-name-input').value.trim();
+                const purchaseDate = document.getElementById('purchase-date-input').value;
+                const totalAmount = parseFloat(document.getElementById('total-amount-input').value);
+
+                // Collect items
+                const items = [];
+                const itemRows = document.querySelectorAll('.item-row-edit');
+                itemRows.forEach((row, index) => {
+                    const name = row.querySelector('.item-name')?.value.trim();
+                    const category = row.querySelector('.item-category')?.value;
+                    const quantity = parseFloat(row.querySelector('.item-quantity')?.value || 0);
+                    const unitPrice = parseFloat(row.querySelector('.item-unit-price')?.value || 0);
+                    const totalPrice = parseFloat(row.querySelector('.item-total-price')?.value || 0);
+
+                    if (name) {
+                        items.push({
+                            product_name: name,
+                            category: category,
+                            quantity: quantity,
+                            unit_price: unitPrice || null,
+                            total_price: totalPrice
+                        });
+                    }
+                });
+
+                if (items.length === 0) {
+                    throw new Error('Debe haber al menos un producto');
+                }
+
+                // Validate
+                if (!storeName) {
+                    throw new Error('El nombre del supermercado no puede estar vacío');
+                }
+
+                // Update receipt
+                const updateData = {
+                    store_name: storeName,
+                    purchase_date: purchaseDate,
+                    total_amount: totalAmount,
+                    items: items
+                };
+
+                const response = await window.api.updateReceipt(receiptId, updateData);
+
+                if (response.success) {
+                    showToast('Factura actualizada exitosamente', 'success');
+
+                    // Reload data
+                    receiptData = response.data;
+                    originalReceiptData = JSON.parse(JSON.stringify(receiptData));
+                    isEditMode = false;
+
+                    const container = document.getElementById('detail-container');
+                    container.classList.remove('edit-mode');
+                    container.classList.add('view-mode');
+
+                    renderReceiptDetail(receiptData);
+                } else {
+                    throw new Error(response.error || 'Error al actualizar');
+                }
+            } catch (error) {
+                showToast(error.message || 'Error al guardar los cambios', 'error');
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i data-lucide="save" style="width: 16px; height: 16px;"></i> Guardar';
+                lucide.createIcons();
+            }
+        }
+
+        function updateItemTotal(index) {
+            const quantity = parseFloat(document.querySelector(`.item-quantity[data-index="${index}"]`)?.value || 0);
+            const unitPrice = parseFloat(document.querySelector(`.item-unit-price[data-index="${index}"]`)?.value || 0);
+            const totalPriceInput = document.querySelector(`.item-total-price[data-index="${index}"]`);
+
+            if (totalPriceInput && quantity && unitPrice) {
+                totalPriceInput.value = (quantity * unitPrice).toFixed(2);
+            }
+
+            validateTotal();
+        }
+
+        function validateTotal() {
+            // Calculate sum of all items
+            let itemsSum = 0;
+            document.querySelectorAll('.item-total-price').forEach(input => {
+                itemsSum += parseFloat(input.value || 0);
+            });
+
+            const totalAmountInput = document.getElementById('total-amount-input');
+            const totalAmount = parseFloat(totalAmountInput?.value || 0);
+            const totalError = document.getElementById('total-error');
+            const calculatedTotalEl = document.getElementById('calculated-total');
+
+            if (calculatedTotalEl) {
+                calculatedTotalEl.textContent = formatCurrency(itemsSum);
+            }
+
+            // Check if totals match
+            const difference = Math.abs(itemsSum - totalAmount);
+            if (difference > 0.01) { // Allow 1 cent tolerance for rounding
+                if (totalError) {
+                    totalError.style.display = 'block';
+                    totalError.textContent = `⚠️ El total no coincide con la suma de productos (${formatCurrency(itemsSum)})`;
+                }
+            } else {
+                if (totalError) {
+                    totalError.style.display = 'none';
+                }
+            }
+        }
+
+        function deleteItem(index) {
+            if (confirm('¿Eliminar este producto?')) {
+                receiptData.items.splice(index, 1);
+                renderItems(receiptData.items);
+                validateTotal();
+
+                // Update count
+                document.getElementById('items-count').textContent = `${receiptData.items.length} productos`;
+                document.getElementById('total-items-count').textContent = receiptData.items.length;
+
+                const avgPerItem = receiptData.items.length > 0
+                    ? parseFloat(document.getElementById('total-amount-input')?.value || 0) / receiptData.items.length
+                    : 0;
+                document.getElementById('average-per-item').textContent = formatCurrency(avgPerItem);
+            }
+        }
+
+        function addNewItem() {
+            const newItem = {
+                product_name: '',
+                category: 'otros',
+                quantity: 1,
+                unit_price: 0,
+                total_price: 0
+            };
+            receiptData.items.push(newItem);
+            renderItems(receiptData.items);
+
+            // Update count
+            document.getElementById('items-count').textContent = `${receiptData.items.length} productos`;
+            document.getElementById('total-items-count').textContent = receiptData.items.length;
+
+            // Focus on new item name input
+            const lastNameInput = document.querySelector(`.item-name[data-index="${receiptData.items.length - 1}"]`);
+            if (lastNameInput) {
+                lastNameInput.focus();
+            }
+        }
+
+        function showStoresSuggestions(query) {
+            const suggestionsEl = document.getElementById('store-suggestions');
+            if (!suggestionsEl) return;
+
+            if (!query || query.length < 2) {
+                suggestionsEl.classList.remove('active');
+                return;
+            }
+
+            // Filter stores
+            const filtered = storesList.filter(store =>
+                store.store_name.toLowerCase().includes(query.toLowerCase())
+            );
+
+            if (filtered.length === 0) {
+                suggestionsEl.classList.remove('active');
+                return;
+            }
+
+            // Render suggestions
+            suggestionsEl.innerHTML = filtered.map(store => `
+                <div class="store-suggestion-item" onclick="selectStore('${store.store_name.replace(/'/g, "\\'")}')">
+                    <div style="font-weight: 600;">${store.store_name}</div>
+                    <div style="font-size: 0.75rem; color: var(--text-secondary);">Usado ${store.count} ${store.count === 1 ? 'vez' : 'veces'}</div>
+                </div>
+            `).join('');
+
+            suggestionsEl.classList.add('active');
+        }
+
+        function selectStore(storeName) {
+            const input = document.getElementById('store-name-input');
+            if (input) {
+                input.value = storeName;
+            }
+            const suggestionsEl = document.getElementById('store-suggestions');
+            if (suggestionsEl) {
+                suggestionsEl.classList.remove('active');
+            }
+        }
+
+        // Close suggestions when clicking outside
+        document.addEventListener('click', (e) => {
+            const autocomplete = document.querySelector('.store-autocomplete');
+            if (autocomplete && !autocomplete.contains(e.target)) {
+                const suggestionsEl = document.getElementById('store-suggestions');
+                if (suggestionsEl) {
+                    suggestionsEl.classList.remove('active');
+                }
+            }
+        });
 
         async function deleteReceipt() {
             if (!receiptData) return;
@@ -395,56 +861,11 @@
             overlay.classList.toggle('active');
         }
 
-        function editStoreName() {
-            document.getElementById('store-name-display').style.display = 'none';
-            document.getElementById('edit-store-btn').style.display = 'none';
-            document.getElementById('store-name-edit').style.display = 'block';
-            document.getElementById('store-name-input').focus();
-        }
-
-        function cancelEdit() {
-            document.getElementById('store-name-display').style.display = 'block';
-            document.getElementById('edit-store-btn').style.display = 'inline-block';
-            document.getElementById('store-name-edit').style.display = 'none';
-            // Reset input to original value
-            document.getElementById('store-name-input').value = receiptData.store_name;
-        }
-
-        async function saveStoreName() {
-            const newStoreName = document.getElementById('store-name-input').value.trim();
-
-            if (!newStoreName) {
-                showToast('El nombre del supermercado no puede estar vacío', 'error');
-                return;
-            }
-
-            if (newStoreName === receiptData.store_name) {
-                cancelEdit();
-                return;
-            }
-
-            try {
-                const response = await window.api.updateReceipt(receiptId, {
-                    store_name: newStoreName
-                });
-
-                if (response.success) {
-                    receiptData.store_name = newStoreName;
-                    document.getElementById('store-name-display').textContent = newStoreName;
-                    cancelEdit();
-                    showToast('Nombre del supermercado actualizado', 'success');
-                } else {
-                    throw new Error(response.error || 'Error al actualizar');
-                }
-            } catch (error) {
-                showToast(error.message || 'Error al actualizar el nombre del supermercado', 'error');
-            }
-        }
-
         document.getElementById('sidebar-overlay').addEventListener('click', toggleSidebar);
 
         // Initialize
         loadUserInfo();
+        loadStores();
         loadReceiptDetail();
 
         // Initialize Lucide icons

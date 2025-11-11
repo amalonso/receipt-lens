@@ -20,7 +20,8 @@ from backend.receipts.schemas import (
     ReceiptListItem,
     ReceiptResponse,
     ReceiptUpdateRequest,
-    ItemSchema
+    ItemSchema,
+    ItemUpdateSchema
 )
 
 logger = logging.getLogger(__name__)
@@ -213,6 +214,34 @@ async def list_receipts(
     return {
         "success": True,
         "data": list_response.dict(),
+        "error": None
+    }
+
+
+@router.get(
+    "/stores",
+    response_model=ReceiptResponse,
+    status_code=status.HTTP_200_OK,
+    summary="Get unique store names",
+    description="Get list of unique store names for the current user, ordered by frequency"
+)
+async def get_stores(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    Get list of unique store names for the current user.
+
+    Returns stores ordered by frequency of use (most frequent first).
+    This is useful for autocomplete/suggestions when editing receipts.
+    """
+    logger.info(f"GET /api/receipts/stores - user_id: {current_user.id}")
+
+    stores = ReceiptService.get_unique_stores(db, current_user.id)
+
+    return {
+        "success": True,
+        "data": {"stores": stores},
         "error": None
     }
 

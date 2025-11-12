@@ -479,10 +479,10 @@ class AdminService:
             "user": user.to_dict(),
             "monthly_spending": [
                 {
-                    "year": int(row.year),
-                    "month": int(row.month),
+                    "year": int(row.year or 0),
+                    "month": int(row.month or 0),
                     "receipt_count": row.receipt_count,
-                    "total_amount": float(row.total_amount)
+                    "total_amount": float(row.total_amount or 0)
                 }
                 for row in monthly_spending
             ],
@@ -490,7 +490,7 @@ class AdminService:
                 {
                     "category": row.name,
                     "item_count": row.item_count,
-                    "total_spent": float(row.total_spent)
+                    "total_spent": float(row.total_spent or 0)
                 }
                 for row in category_spending
             ],
@@ -498,8 +498,8 @@ class AdminService:
                 {
                     "store_name": row.store_name,
                     "visit_count": row.visit_count,
-                    "total_spent": float(row.total_spent),
-                    "avg_receipt": float(row.avg_receipt)
+                    "total_spent": float(row.total_spent or 0),
+                    "avg_receipt": float(row.avg_receipt or 0)
                 }
                 for row in store_spending
             ],
@@ -508,9 +508,9 @@ class AdminService:
                     "product_name": row.product_name,
                     "category": row.category,
                     "purchase_count": row.purchase_count,
-                    "total_quantity": float(row.total_quantity),
-                    "total_spent": float(row.total_spent),
-                    "avg_price": float(row.avg_price)
+                    "total_quantity": float(row.total_quantity or 0),
+                    "total_spent": float(row.total_spent or 0),
+                    "avg_price": float(row.avg_price or 0)
                 }
                 for row in top_products
             ]

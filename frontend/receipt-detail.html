@@ -66,6 +66,20 @@
             display: none !important;
         }
 
+        .edit-mode .edit-only {
+            display: block !important;
+        }
+
+        /* Reglas específicas para elementos de tabla */
+        .edit-mode tr.edit-only {
+            display: table-row !important;
+        }
+
+        .edit-mode th.edit-only,
+        .edit-mode td.edit-only {
+            display: table-cell !important;
+        }
+
         .edit-input {
             padding: 0.5rem;
             border: 1px solid var(--border-color);

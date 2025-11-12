@@ -456,7 +456,7 @@ class AdminService:
             Receipt.store_name,
             func.count(Receipt.id).label('visit_count'),
             func.coalesce(func.sum(Receipt.total_amount), 0).label('total_spent'),
-            func.avg(Receipt.total_amount).label('avg_receipt')
+            func.coalesce(func.avg(Receipt.total_amount), 0).label('avg_receipt')
         ).filter(Receipt.user_id == user_id).group_by(
             Receipt.store_name
         ).order_by(desc('total_spent')).limit(10).all()
@@ -466,9 +466,9 @@ class AdminService:
             Item.product_name,
             Category.name.label('category'),
             func.count(Item.id).label('purchase_count'),
-            func.sum(Item.quantity).label('total_quantity'),
+            func.coalesce(func.sum(Item.quantity), 0).label('total_quantity'),
             func.coalesce(func.sum(Item.total_price), 0).label('total_spent'),
-            func.avg(Item.unit_price).label('avg_price')
+            func.coalesce(func.avg(Item.unit_price), 0).label('avg_price')
         ).join(Receipt, Item.receipt_id == Receipt.id).outerjoin(
             Category, Item.category_id == Category.id
         ).filter(Receipt.user_id == user_id).group_by(

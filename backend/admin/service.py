@@ -456,7 +456,7 @@ class AdminService:
             Receipt.store_name,
             func.count(Receipt.id).label('visit_count'),
             func.coalesce(func.sum(Receipt.total_amount), 0).label('total_spent'),
-            func.avg(Receipt.total_amount).label('avg_receipt')
+            func.coalesce(func.avg(Receipt.total_amount), 0).label('avg_receipt')
         ).filter(Receipt.user_id == user_id).group_by(
             Receipt.store_name
         ).order_by(desc('total_spent')).limit(10).all()
@@ -466,9 +466,9 @@ class AdminService:
             Item.product_name,
             Category.name.label('category'),
             func.count(Item.id).label('purchase_count'),
-            func.sum(Item.quantity).label('total_quantity'),
+            func.coalesce(func.sum(Item.quantity), 0).label('total_quantity'),
             func.coalesce(func.sum(Item.total_price), 0).label('total_spent'),
-            func.avg(Item.unit_price).label('avg_price')
+            func.coalesce(func.avg(Item.unit_price), 0).label('avg_price')
         ).join(Receipt, Item.receipt_id == Receipt.id).outerjoin(
             Category, Item.category_id == Category.id
         ).filter(Receipt.user_id == user_id).group_by(
@@ -479,10 +479,10 @@ class AdminService:
             "user": user.to_dict(),
             "monthly_spending": [
                 {
-                    "year": int(row.year),
-                    "month": int(row.month),
+                    "year": int(row.year or 0),
+                    "month": int(row.month or 0),
                     "receipt_count": row.receipt_count,
-                    "total_amount": float(row.total_amount)
+                    "total_amount": float(row.total_amount or 0)
                 }
                 for row in monthly_spending
             ],
@@ -490,7 +490,7 @@ class AdminService:
                 {
                     "category": row.name,
                     "item_count": row.item_count,
-                    "total_spent": float(row.total_spent)
+                    "total_spent": float(row.total_spent or 0)
                 }
                 for row in category_spending
             ],
@@ -498,8 +498,8 @@ class AdminService:
                 {
                     "store_name": row.store_name,
                     "visit_count": row.visit_count,
-                    "total_spent": float(row.total_spent),
-                    "avg_receipt": float(row.avg_receipt)
+                    "total_spent": float(row.total_spent or 0),
+                    "avg_receipt": float(row.avg_receipt or 0)
                 }
                 for row in store_spending
             ],
@@ -508,9 +508,9 @@ class AdminService:
                     "product_name": row.product_name,
                     "category": row.category,
                     "purchase_count": row.purchase_count,
-                    "total_quantity": float(row.total_quantity),
-                    "total_spent": float(row.total_spent),
-                    "avg_price": float(row.avg_price)
+                    "total_quantity": float(row.total_quantity or 0),
+                    "total_spent": float(row.total_spent or 0),
+                    "avg_price": float(row.avg_price or 0)
                 }
                 for row in top_products
             ]

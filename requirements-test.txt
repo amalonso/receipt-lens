@@ -1,0 +1,15 @@
+# Testing dependencies only (for running tests without full app)
+pytest==7.4.3
+pytest-asyncio==0.21.1
+pytest-cov==4.1.0
+httpx==0.25.2
+
+# E2E Testing with Playwright
+playwright==1.40.0
+pytest-playwright==0.4.3
+pytest-base-url==2.1.0
+pytest-html==4.1.1
+
+# Minimal dependencies for tests
+pydantic==2.5.0
+python-dotenv==1.0.0

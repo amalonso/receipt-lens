@@ -250,10 +250,10 @@
                     <button class="btn btn-primary view-only" onclick="enterEditMode()" id="edit-mode-btn">
                         <i data-lucide="edit" style="width: 16px; height: 16px;"></i> Editar
                     </button>
-                    <button class="btn btn-success edit-only" onclick="saveChanges()" id="save-btn" style="display: none;">
+                    <button class="btn btn-success edit-only" onclick="saveChanges()" id="save-btn">
                         <i data-lucide="save" style="width: 16px; height: 16px;"></i> Guardar
                     </button>
-                    <button class="btn btn-outline edit-only" onclick="cancelEdit()" style="display: none;">
+                    <button class="btn btn-outline edit-only" onclick="cancelEdit()">
                         <i data-lucide="x" style="width: 16px; height: 16px;"></i> Cancelar
                     </button>
                     <button class="btn btn-danger view-only" onclick="deleteReceipt()" id="delete-btn">
@@ -687,6 +687,10 @@
                     receiptData = response.data;
                     originalReceiptData = JSON.parse(JSON.stringify(receiptData));
                     isEditMode = false;
+
+                    // Restore button state before exiting edit mode
+                    saveBtn.disabled = false;
+                    saveBtn.innerHTML = '<i data-lucide="save" style="width: 16px; height: 16px;"></i> Guardar';
 
                     const container = document.getElementById('detail-container');
                     container.classList.remove('edit-mode');

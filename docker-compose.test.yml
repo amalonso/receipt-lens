@@ -1,0 +1,79 @@
+services:
+  # Test database - isolated from production
+  db-test:
+    image: postgres:15-alpine
+    container_name: receipt-lens-db-test
+    environment:
+      POSTGRES_DB: receipt_lens_test
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+    volumes:
+      - ./backend/database/init.sql:/docker-entrypoint-initdb.d/init.sql
+    ports:
+      - "5433:5432"  # Different port to avoid conflicts
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d receipt_lens_test"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - test-network
+
+  # Backend application in test mode
+  backend-test:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: receipt-lens-backend-test
+    depends_on:
+      db-test:
+        condition: service_healthy
+    environment:
+      # Database
+      - DATABASE_URL=postgresql://test_user:test_password@db-test:5432/receipt_lens_test
+
+      # Vision Provider (using mock or ocrspace with test key)
+      - VISION_PROVIDER=${TEST_VISION_PROVIDER:-ocrspace}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
+      - GOOGLE_VISION_CREDENTIALS=${GOOGLE_VISION_CREDENTIALS:-}
+      - OCRSPACE_API_KEY=${OCRSPACE_API_KEY:-helloworld}
+      - OPENAI_API_KEY=${OPENAI_API_KEY:-}
+
+      # Security
+      - JWT_SECRET_KEY=test_secret_key_for_testing_only
+      - JWT_ALGORITHM=HS256
+      - JWT_EXPIRATION_HOURS=24
+
+      # Application
+      - ENVIRONMENT=testing
+      - DEBUG=true
+      - LOG_LEVEL=INFO
+      - DB_LOG_LEVEL=WARNING
+
+      # Upload Settings
+      - MAX_UPLOAD_SIZE_MB=10
+      - UPLOAD_DIR=/app/test_uploads
+      - ALLOWED_EXTENSIONS=jpg,jpeg,png,pdf
+      - UPLOAD_RATE_LIMIT_PER_HOUR=100
+
+      # CORS
+      - CORS_ORIGINS=http://localhost:8001,http://backend-test:8001
+    volumes:
+      - ./backend:/app/backend
+      - ./frontend:/app/frontend
+      - ./tests:/app/tests
+      - ./pytest.ini:/app/pytest.ini
+      - test-uploads:/app/test_uploads
+    ports:
+      - "8001:8000"  # Different port for testing
+    networks:
+      - test-network
+    command: uvicorn backend.main:app --host 0.0.0.0 --port 8000 --reload
+
+volumes:
+  test-uploads:
+    driver: local
+
+networks:
+  test-network:
+    driver: bridge
